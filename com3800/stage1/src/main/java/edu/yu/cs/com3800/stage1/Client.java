@@ -1,4 +1,4 @@
-package main.java.edu.yu.cs.com3800.stage1;
+package edu.yu.cs.com3800.stage1;
 
 import java.io.IOException;
 

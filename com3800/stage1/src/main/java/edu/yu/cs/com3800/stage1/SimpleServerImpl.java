@@ -1,6 +1,6 @@
-package main.java.edu.yu.cs.com3800.stage1;
+package edu.yu.cs.com3800.stage1;
 
-import main.java.edu.yu.cs.com3800.SimpleServer;
+import edu.yu.cs.com3800.SimpleServer;
 
 import java.io.IOException;
 
