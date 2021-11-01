@@ -1,20 +1,27 @@
 package edu.yu.cs.com3800;
 
+import java.io.File;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.util.Date;
 import java.util.logging.*;
 
 public interface LoggingServer {
     public default Logger initializeLogging(String fileNamePreface, boolean disableParentHandlers) throws IOException {
         //TODO: Remove this:
         disableParentHandlers = false;
-        //TODO: Implement this: 2) set up that newly created logger to write out to its own unique log file under a
-        // directory that has a name whose suffix was created with the following
-        // DateTimeFormatter pattern: "yyyy-MM-dd-kk_mm"
+
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd-kk_mm");
+        String folderName = "Stage2Logs_" + dtf.format(LocalDateTime.now());
+        File folder = new File(folderName);
+        folder.mkdir();
         System.setProperty("java.util.logging.FileHandler.formatter", "java.util.logging.SimpleFormatter");
-        System.setProperty("java.util.logging.SimpleFormatter.format", "[%4$s] [%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS] %2$s:  %5$s%6$s%n");
+        System.setProperty("java.util.logging.SimpleFormatter.format", "[%4$s] [%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS.%1$tL] %2$s:  %5$s%6$s%n");
         Logger log = Logger.getLogger(fileNamePreface);
         for (Handler handler : log.getHandlers()) {  log.removeHandler(handler);}
-        FileHandler fileHandler = new FileHandler(fileNamePreface+ ".log", false);
+        FileHandler fileHandler = new FileHandler(folderName+"/"+fileNamePreface+ ".log", false);
         fileHandler.setFormatter(new SimpleFormatter());
         ConsoleHandler consoleHandler = new ConsoleHandler();
         consoleHandler.setLevel(Level.FINER);
@@ -24,7 +31,7 @@ public interface LoggingServer {
         log.setLevel(Level.ALL);
         return log;
     }
-    default String prependThreadName(String msg){
-        return "==" + Thread.currentThread().getName() + "== : " + msg;
+    default Logger initializeLogging(String fileNamePreface) throws IOException{
+        return initializeLogging(fileNamePreface, true);
     }
 }

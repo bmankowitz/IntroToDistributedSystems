@@ -9,9 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ZooKeeperQuorumPeerServerDemo {
-//    public static void main(String[] args) {
-//        System.out.println("HI");
-//    }
+
     public static void main(String[] args) {
         tradeMessages();
     }
@@ -27,6 +25,7 @@ public class ZooKeeperQuorumPeerServerDemo {
         peerIDtoAddress.put(6L, new InetSocketAddress("localhost", 8060));
         peerIDtoAddress.put(7L, new InetSocketAddress("localhost", 8070));
         peerIDtoAddress.put(8L, new InetSocketAddress("localhost", 8080));
+        peerIDtoAddress.put(9L, new InetSocketAddress("localhost", 8090));
 
         //create servers
         ArrayList<ZooKeeperPeerServer> servers = new ArrayList<>(3);
@@ -39,7 +38,7 @@ public class ZooKeeperQuorumPeerServerDemo {
         }
         //wait for threads to start
         try {
-            Thread.sleep(500);
+            Thread.sleep(1000);
         }
         catch (Exception e) {
         }
@@ -47,7 +46,10 @@ public class ZooKeeperQuorumPeerServerDemo {
         for (ZooKeeperPeerServer server : servers) {
             Vote leader = server.getCurrentLeader();
             if (leader != null) {
-                //System.out.println("Server on port " + server.getMyAddress().getPort() + " whose ID is " + server.getId() + " has the following ID as its leader: " + leader.getProposedLeaderID() + " and its state is " + server.getPeerState().name());
+                System.out.println("Server on port " + server.getAddress().getPort() +
+                        " whose ID is " + server.getServerId() +
+                        " has the following ID as its leader: " + leader.getProposedLeaderID() +
+                        " and its state is " + server.getPeerState());
                 server.shutdown();
             }
         }

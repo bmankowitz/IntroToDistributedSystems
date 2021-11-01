@@ -37,4 +37,5 @@ public class ElectionNotification extends Vote {
         }
         return false;
     }
+
 }
