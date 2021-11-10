@@ -1,5 +1,7 @@
 package edu.yu.cs.com3800;
 
+import edu.yu.cs.com3800.stage2.ZooKeeperPeerServerImpl;
+
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -10,13 +12,13 @@ public class ZooKeeperLeaderElection {
     /**
      * time to wait once we believe we've reached the end of leader election.
      */
-    private final static int finalizeWait = 200;
+    public final static int finalizeWait = 200;
 
     /**
      * Upper bound on the amount of time between two consecutive notification checks.
      * This impacts the amount of time to get the system up again after long partitions. Currently 60 seconds.
      */
-    private final static int maxNotificationInterval = 60000;
+    public static int maxNotificationInterval = 60000;
     private final LinkedBlockingQueue<Message> incomingMessages;
     private final ZooKeeperPeerServer myPeerServer;
     private long proposedLeader;
@@ -28,51 +30,19 @@ public class ZooKeeperLeaderElection {
     }
 
     public static ElectionNotification getNotificationFromMessage(Message received) {
-        //TODO: implement
-        return null;
+        return ZooKeeperPeerServerImpl.getNotificationFromMessage(received);
     }
 
     public static byte[] buildMsgContent(ElectionNotification notification) {
-        //FIXME
-        return null;
+        return ZooKeeperPeerServerImpl.buildMsgContent(notification);
     }
-
 
     private synchronized Vote getCurrentVote() {
         return new Vote(this.proposedLeader, this.proposedEpoch);
     }
 
     public synchronized Vote lookForLeader() {
-        //send initial notifications to other peers to get things started
-        sendNotifications();
-        //Loop, exchanging notifications with other servers until we find a leader
-        while (this.myPeerServer.getPeerState() == LOOKING) {
-            //Remove next notification from queue, timing out after 2 times the termination time
-            //if no notifications received..
-            //..resend notifications to prompt a reply from others..
-            //.and implement exponential back-off when notifications not received..
-            //if/when we get a message and it's from a valid server and for a valid server..
-            //switch on the state of the sender:
-            switch (getServerState('X')) {
-                case LOOKING: //if the sender is also looking
-                    //if the received message has a vote for a leader which supersedes mine, change my vote and tell all my peers what my new vote is.
-                    //keep track of the votes I received and who I received them from.
-                    ////if I have enough votes to declare my currently proposed leader as the leader:
-                    //first check if there are any new votes for a higher ranked possible leader before I declare a leader. If so, continue in my election loop
-                    //If not, set my own state to either LEADING (if I won the election) or FOLLOWING (if someone lese won the election) and exit the election
-                case FOLLOWING:
-                case LEADING: //if the sender is following a leader already or thinks it is the leader
-                    //IF: see if the sender's vote allows me to reach a conclusion based on the election epoch that I'm in, i.e. it gives the majority to the vote of the FOLLOWING or LEADING peer whose vote I just received.
-                    //if so, accept the election winner.
-                    //As, once someone declares a winner, we are done. We are not worried about / accounting for misbehaving peers.
-                    //ELSE: if n is from a LATER election epoch
-                    //IF a quorum from that epoch are voting for the same peer as the vote of the FOLLOWING or LEADING peer whose vote I just received.
-                    //THEN accept their leader, and update my epoch to be their epoch
-                    //ELSE:
-                    //keep looping on the election loop.
-            }
-        }
-        //fIXMe
+        //the logic has been migrated to ZooKeepE
         return null;
     }
 

@@ -1,5 +1,7 @@
+
 package edu.yu.cs.com3800;
 
+import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
@@ -29,23 +31,22 @@ public class UDPMessageSender extends Thread implements LoggingServer {
         while (!this.isInterrupted()) {
             try {
                 if(this.logger == null){
-                    this.logger = initializeLogging(UDPMessageSender.class.getCanonicalName() + "-on-server-with-udpPort-" + this.serverUdpPort,true);
+                    this.logger = initializeLogging(UDPMessageSender.class.getCanonicalName() + "-on-server-with-udpPort-" + this.serverUdpPort);
                 }
-                Message messageToSend = this.outgoingMessages.poll(2, TimeUnit.SECONDS);
+                Message messageToSend = this.outgoingMessages.poll();
                 if (messageToSend != null) {
                     DatagramSocket socket = new DatagramSocket();
                     byte[] payload = messageToSend.getNetworkPayload();
                     DatagramPacket sendPacket = new DatagramPacket(payload, payload.length, new InetSocketAddress(messageToSend.getReceiverHost(), messageToSend.getReceiverPort()));
                     socket.send(sendPacket);
                     socket.close();
-//                    this.logger.fine(prependThreadName("Message sent:\n" + messageToSend.toString()));
                     this.logger.fine("Message sent:\n" + messageToSend.toString());
                 }
             }
-            catch(InterruptedException e){}
-            catch (Exception e) {
+            catch (IOException e) {
                 this.logger.log(Level.WARNING,"failed to send packet", e);
             }
         }
+        this.logger.log(Level.SEVERE,"Exiting UDPMessageSender.run()");
     }
 }
