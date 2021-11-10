@@ -1,6 +1,9 @@
 package edu.yu.cs.com3800.stage2;
 
+import edu.yu.cs.com3800.ElectionNotification;
 import edu.yu.cs.com3800.Message;
+import edu.yu.cs.com3800.Vote;
+import edu.yu.cs.com3800.ZooKeeperPeerServer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,6 +62,15 @@ public class Stage2Test {
     public void sendMessage() {
         servers.get(0).sendMessage(Message.MessageType.WORK, "test".getBytes(StandardCharsets.UTF_8),
                 servers.get(1).getMyAddress());
+//        servers.get(1);
+    }
+    @Test
+    public void sendElectionMessage() {
+        ElectionNotification electionNotification =
+                new ElectionNotification(123, ZooKeeperPeerServer.ServerState.LOOKING,
+                        21,-433);
+//        servers.get(0).sendMessage(Message.MessageType.WORK, new Byte[](electionNotification),
+//                servers.get(1).getMyAddress());
 //        servers.get(1);
     }
 }
