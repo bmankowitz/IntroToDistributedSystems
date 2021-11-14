@@ -10,11 +10,8 @@ import java.util.logging.*;
 
 public interface LoggingServer {
     public default Logger initializeLogging(String fileNamePreface, boolean disableParentHandlers) throws IOException {
-        //TODO: Remove this:
-        disableParentHandlers = false;
-
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd-kk_mm");
-        String folderName = "Stage2Logs_" + dtf.format(LocalDateTime.now());
+        String folderName = "Stage3Logs_" + dtf.format(LocalDateTime.now());
         File folder = new File(folderName);
         folder.mkdir();
         System.setProperty("java.util.logging.FileHandler.formatter", "java.util.logging.SimpleFormatter");
@@ -32,6 +29,8 @@ public interface LoggingServer {
         return log;
     }
     default Logger initializeLogging(String fileNamePreface) throws IOException{
-        return initializeLogging(fileNamePreface, true);
+        //TODO: CHANGE the method to disable parent handlers!!
+        return initializeLogging(fileNamePreface, false);
+//        return initializeLogging(fileNamePreface, true);
     }
 }

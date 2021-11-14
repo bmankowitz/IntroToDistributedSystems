@@ -18,12 +18,14 @@ public class Stage3PeerServerDemo {
     private int leaderPort = this.ports[this.ports.length - 1];
     private int myPort = 9999;
     private InetSocketAddress myAddress = new InetSocketAddress("localhost", this.myPort);
-    private ArrayList<ZooKeeperPeerServer> servers;
+    private ArrayList<ZooKeeperPeerServerImpl> servers;
+    private final int senderPort = 8002;
+    private final int receiverPort = 8003;
 
     public Stage3PeerServerDemo() throws Exception {
         //step 1: create sender & sending queue
         this.outgoingMessages = new LinkedBlockingQueue<>();
-        UDPMessageSender sender = new UDPMessageSender(this.outgoingMessages);
+        UDPMessageSender sender = new UDPMessageSender(this.outgoingMessages, senderPort);
         //step 2: create servers
         createServers();
         //step2.1: wait for servers to get started
@@ -40,7 +42,7 @@ public class Stage3PeerServerDemo {
         }
         Util.startAsDaemon(sender, "Sender thread");
         this.incomingMessages = new LinkedBlockingQueue<>();
-        UDPMessageReceiver receiver = new UDPMessageReceiver(this.incomingMessages, this.myAddress, this.myPort);
+        UDPMessageReceiver receiver = new UDPMessageReceiver(this.incomingMessages, this.myAddress, this.myPort, null);
         Util.startAsDaemon(receiver, "Receiver thread");
         //step 4: validate responses from leader
 
@@ -51,7 +53,7 @@ public class Stage3PeerServerDemo {
     }
 
     private void printLeaders() {
-        for (ZooKeeperPeerServer server : this.servers) {
+        for (ZooKeeperPeerServerImpl server : this.servers) {
             Vote leader = server.getCurrentLeader();
             if (leader != null) {
                 System.out.println("Server on port " + server.getMyAddress().getPort() + " whose ID is " + server.getId() + " has the following ID as its leader: " + leader.getProposedLeaderID() + " and its state is " + server.getPeerState().name());
@@ -91,7 +93,7 @@ public class Stage3PeerServerDemo {
         for (Map.Entry<Long, InetSocketAddress> entry : peerIDtoAddress.entrySet()) {
             HashMap<Long, InetSocketAddress> map = (HashMap<Long, InetSocketAddress>) peerIDtoAddress.clone();
             map.remove(entry.getKey());
-            ZooKeeperPeerServer server = new ZooKeeperPeerServerImpl(entry.getValue().getPort(), 0, entry.getKey(), map);
+            ZooKeeperPeerServerImpl server = new ZooKeeperPeerServerImpl(entry.getValue().getPort(), 0, entry.getKey(), map);
             this.servers.add(server);
             new Thread(server, "Server on port " + server.getMyAddress().getPort()).start();
         }

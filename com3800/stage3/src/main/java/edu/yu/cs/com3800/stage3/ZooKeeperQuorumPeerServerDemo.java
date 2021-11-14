@@ -1,4 +1,4 @@
-package edu.yu.cs.com3800.stage2;
+package edu.yu.cs.com3800.stage3;
 
 import edu.yu.cs.com3800.Vote;
 import edu.yu.cs.com3800.ZooKeeperPeerServer;

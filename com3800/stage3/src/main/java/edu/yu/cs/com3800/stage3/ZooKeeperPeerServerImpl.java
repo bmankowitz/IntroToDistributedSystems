@@ -1,4 +1,4 @@
-package edu.yu.cs.com3800.stage2;
+package edu.yu.cs.com3800.stage3;
 
 import edu.yu.cs.com3800.*;
 
@@ -9,8 +9,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -20,23 +20,29 @@ import static edu.yu.cs.com3800.ZooKeeperPeerServer.ServerState.*;
 public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServer, LoggingServer{
     private final InetSocketAddress myAddress;
     private final int myPort;
+    private JavaRunnerFollower javaRunnerFollower;
+    private RoundRobinLeader roundRobinLeader;
     private ServerState state;
     private volatile boolean shutdown;
     private final LinkedBlockingQueue<Message> outgoingMessages;
     private final LinkedBlockingQueue<Message> incomingMessages;
+    private final LinkedBlockingQueue<Message> javaRunnerWorkItems;
     private final Long id;
     private long peerEpoch;
     private volatile Vote currentLeader;
-    private final Map<Long,InetSocketAddress> peerIDtoAddress;
-    private final Map<Long,ElectionNotification> peerIDtoVote = new HashMap<>();
+    public final Map<Long,InetSocketAddress> peerIDtoAddress;
+    public Map<Long,ElectionNotification> peerIDtoVote = new HashMap<>();
     private Logger log;
     private UDPMessageSender senderWorker;
     private UDPMessageReceiver receiverWorker;
+    //TODO: use this to generate unique IDs for every (work) request
+    static AtomicLong requestIDGenerator = new AtomicLong(0);
 
 
     public ZooKeeperPeerServerImpl(int myPort, long peerEpoch, Long id, Map<Long,InetSocketAddress> peerIDtoAddress) {
         this.outgoingMessages = new LinkedBlockingQueue<>();
         this.incomingMessages = new LinkedBlockingQueue<>();
+        this.javaRunnerWorkItems = new LinkedBlockingQueue<Message>();
         this.myAddress = new InetSocketAddress("localhost",myPort);
         this.myPort = myPort;
         this.peerIDtoAddress = peerIDtoAddress;
@@ -49,6 +55,10 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         //TODO: what is the initial states:?
         state = ServerState.LOOKING;
         currentLeader = new Vote(this.id, this.peerEpoch);
+    }
+
+    public Map<Long, InetSocketAddress> getPeerIDtoAddress() {
+        return peerIDtoAddress;
     }
 
     public synchronized Vote lookForLeader() throws InterruptedException {
@@ -72,14 +82,14 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
                 }
             }
             //if/when we get a message and it's from a valid server and for a valid server..
-            log.log(Level.WARNING, "evaluating vote {0} from {1}", new Object[]{vote, vote.getSenderID()});
+            log.log(Level.INFO, "evaluating vote {0} from {1}", new Object[]{vote, vote.getSenderID()});
             if(vote.getPeerEpoch() < this.peerEpoch){
                 log.log(Level.WARNING, "ignoring vote {0} from {1} -- supplied epoch is less than current epoch {2}",
                         new Object[]{vote, vote.getSenderID(), this.peerEpoch});
                 continue SEARCH;
             }
             peerIDtoVote.put(vote.getSenderID(), vote);
-            log.log(Level.WARNING, "vote array after inserting/updating vote from id {0}: {1}",
+            log.log(Level.INFO, "vote array after inserting/updating vote from id {0}: {1}",
                     new Object[]{vote.getSenderID(), peerIDtoVote});
             //switch on the state of the sender:
             OUTER: switch (vote.getState()) {
@@ -139,6 +149,36 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         }
         return currentLeader;
     }
+    public void startWorkProcessingThreads(){
+        Message msg;
+        if((msg = incomingMessages.peek()) != null && msg.getMessageType() == Message.MessageType.WORK){
+            log.log(Level.INFO, "Received new work message. Forwarding to JavaRunnerWorkQueue");
+            incomingMessages.remove(msg);
+            javaRunnerWorkItems.add(msg);
+        }
+        switch (this.state){
+            case LEADING:
+                if(roundRobinLeader != null){
+                    //log.log(Level.INFO, "State: LEADING; Leader already started");
+                    break;
+                }
+                log.log(Level.INFO, "State: LEADING; Starting RoundRobinLeader");
+                roundRobinLeader = new RoundRobinLeader(this, incomingMessages);
+                roundRobinLeader.start();
+                break;
+            case FOLLOWING:
+                if(javaRunnerFollower != null){
+                    //log.log(Level.INFO, "State: FOLLOWING; JavaRunnerFollower already started");
+                    break;
+                }
+                log.log(Level.INFO, "State: Following; Starting JavaRunnerFollower");
+                javaRunnerFollower = new JavaRunnerFollower(this, this.javaRunnerWorkItems);
+                javaRunnerFollower.start();
+                break;
+            default:
+                log.log(Level.SEVERE, "Tried to process work when not LEADING/FOLLOWING");
+        }
+    }
 
     private void sendNotifications() {
         log.log(Level.FINE, "Sending initial EN notifications from port {0}",this.getUdpPort());
@@ -149,7 +189,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     private Vote acceptElectionWinner(ElectionNotification n) {
         //set my state to either LEADING or FOLLOWING
         //clear out the incoming queue before returning
-        log.log(Level.SEVERE, "Elected leader {0}", n);
+        log.log(Level.INFO, "Elected leader {0}", n);
         setCurrentLeader(n);
         if(this.id == currentLeader.getProposedLeaderID()) setPeerState(LEADING);
         else setPeerState(FOLLOWING);
@@ -243,9 +283,12 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
             return;
         }
         //step 3: process received messages
-        while(true) {
+        while(!this.isInterrupted()) {
             try {
-                if(lookForLeader() != null) return;
+                //since we don't need fault tolerance yet, just do leader search if we are LOOKING
+                if(this.getPeerState()== LOOKING) lookForLeader();
+                startWorkProcessingThreads();
+                //return;
             } catch (Exception e) {
                 e.printStackTrace();
                 return;
@@ -263,6 +306,9 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         this.shutdown = true;
         this.senderWorker.shutdown();
         this.receiverWorker.shutdown();
+        if(javaRunnerFollower != null) javaRunnerFollower.shutdown();
+        if(roundRobinLeader != null) roundRobinLeader.shutdown();
+        interrupt();
     }
 
     @Override

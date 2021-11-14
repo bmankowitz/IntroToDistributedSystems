@@ -1,4 +1,4 @@
-package edu.yu.cs.com3800.stage2;
+package edu.yu.cs.com3800.stage3;
 
 import edu.yu.cs.com3800.ElectionNotification;
 import edu.yu.cs.com3800.Message;
@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class Stage2Test {
+public class Stage3Test {
 
     private HashMap<Long, InetSocketAddress> peerIDtoAddress;
     private ArrayList<ZooKeeperPeerServerImpl> servers;
@@ -128,5 +128,52 @@ public class Stage2Test {
         catch (Exception e) {
         }
         Vote v = servers1.get(0).lookForLeader();
+    }
+    @Test
+    public void electLeaderAndDistributeWork() throws InterruptedException {
+        Vote v = servers.get(0).lookForLeader();
+        servers.forEach(server ->
+                Assert.assertEquals(2555555L, server.getCurrentLeader().getProposedLeaderID()));
+        //send message to leader
+        servers.get(0).sendBroadcast(Message.MessageType.WORK, "test".getBytes(StandardCharsets.UTF_8));
+        servers.forEach(ZooKeeperPeerServerImpl::shutdown);
+        Assert.fail("need to implement test");
+    }
+
+    @Test
+    public void electLeaderAndSendMoreWorkItemsThanNodes() throws InterruptedException {
+        Vote v = servers.get(0).lookForLeader();
+        servers.forEach(server ->
+                Assert.assertEquals(2555555L, server.getCurrentLeader().getProposedLeaderID()));
+        //send message to leader
+        servers.get(0).sendBroadcast(Message.MessageType.WORK, "test".getBytes(StandardCharsets.UTF_8));
+        servers.forEach(ZooKeeperPeerServerImpl::shutdown);
+        Assert.fail("need to implement test");
+    }
+    @Test
+    public void electLeaderAndSendWorkDirectlyToNode() throws InterruptedException {
+        //Per piazza (TODO:TICKET NO) A message directly to a worker node should return the result, even though in
+        //future iterations it should only respond to the leader
+        Vote v = servers.get(0).lookForLeader();
+        servers.forEach(server ->
+                Assert.assertEquals(2555555L, server.getCurrentLeader().getProposedLeaderID()));
+        //send message to leader
+        servers.get(0).sendBroadcast(Message.MessageType.WORK, "test".getBytes(StandardCharsets.UTF_8));
+        servers.forEach(ZooKeeperPeerServerImpl::shutdown);
+        Assert.fail("need to implement test");
+    }
+    @Test
+    public void electLeaderAndShutdownKillsAllThreads() throws InterruptedException {
+        //Per piazza (TODO:TICKET NO) A message directly to a worker node should return the result, even though in
+        //future iterations it should only respond to the leader
+        Vote v = servers.get(0).lookForLeader();
+        servers.forEach(server ->
+                Assert.assertEquals(2555555L, server.getCurrentLeader().getProposedLeaderID()));
+        //send message to leader
+        servers.forEach(ZooKeeperPeerServerImpl::shutdown);
+        Thread.sleep(400);
+        servers.forEach(server ->
+                Assert.assertFalse(server.isAlive()));
+        Assert.fail("need to test other threads as well, such as messenger threads and javarunner/roundrobinleader");
     }
 }
