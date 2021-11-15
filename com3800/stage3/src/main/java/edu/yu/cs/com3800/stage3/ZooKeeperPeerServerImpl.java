@@ -27,6 +27,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     private final LinkedBlockingQueue<Message> outgoingMessages;
     private final LinkedBlockingQueue<Message> incomingMessages;
     private final LinkedBlockingQueue<Message> javaRunnerWorkItems;
+    private final LinkedBlockingQueue<Message> roundRobinWork;
     private final Long id;
     private long peerEpoch;
     private volatile Vote currentLeader;
@@ -37,12 +38,14 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     private UDPMessageReceiver receiverWorker;
     //TODO: use this to generate unique IDs for every (work) request
     static AtomicLong requestIDGenerator = new AtomicLong(0);
+    static final Map<Long, InetSocketAddress> requestIdtoAddress = new HashMap<>();
 
 
     public ZooKeeperPeerServerImpl(int myPort, long peerEpoch, Long id, Map<Long,InetSocketAddress> peerIDtoAddress) {
         this.outgoingMessages = new LinkedBlockingQueue<>();
         this.incomingMessages = new LinkedBlockingQueue<>();
         this.javaRunnerWorkItems = new LinkedBlockingQueue<Message>();
+        this.roundRobinWork = new LinkedBlockingQueue<Message>();
         this.myAddress = new InetSocketAddress("localhost",myPort);
         this.myPort = myPort;
         this.peerIDtoAddress = peerIDtoAddress;
@@ -159,16 +162,16 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         switch (this.state){
             case LEADING:
                 if(roundRobinLeader != null){
-                    //log.log(Level.INFO, "State: LEADING; Leader already started");
+                    log.log(Level.INFO, "State: LEADING; Leader already started");
                     break;
                 }
                 log.log(Level.INFO, "State: LEADING; Starting RoundRobinLeader");
-                roundRobinLeader = new RoundRobinLeader(this, incomingMessages);
+                roundRobinLeader = new RoundRobinLeader(this, roundRobinWork);
                 roundRobinLeader.start();
                 break;
             case FOLLOWING:
                 if(javaRunnerFollower != null){
-                    //log.log(Level.INFO, "State: FOLLOWING; JavaRunnerFollower already started");
+                    log.log(Level.INFO, "State: FOLLOWING; JavaRunnerFollower already started");
                     break;
                 }
                 log.log(Level.INFO, "State: Following; Starting JavaRunnerFollower");
@@ -186,7 +189,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         sendBroadcast(Message.MessageType.ELECTION, buildMsgContent(createElectionNotificationFromVote(currentLeader)));
     }
 
-    private Vote acceptElectionWinner(ElectionNotification n) {
+    private Vote acceptElectionWinner(ElectionNotification n) throws InterruptedException {
         //set my state to either LEADING or FOLLOWING
         //clear out the incoming queue before returning
         log.log(Level.INFO, "Elected leader {0}", n);
@@ -194,6 +197,9 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         if(this.id == currentLeader.getProposedLeaderID()) setPeerState(LEADING);
         else setPeerState(FOLLOWING);
         incomingMessages.clear();
+        Thread.sleep(ZooKeeperLeaderElection.finalizeWait);
+        //After sleeping the requisite sleep time, start whatever threads (Javarunner/RoundRobinLeader) are necessary
+        startWorkProcessingThreads();
         return n;
     }
 
@@ -287,7 +293,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
             try {
                 //since we don't need fault tolerance yet, just do leader search if we are LOOKING
                 if(this.getPeerState()== LOOKING) lookForLeader();
-                startWorkProcessingThreads();
+                processMessages();
                 //return;
             } catch (Exception e) {
                 e.printStackTrace();
@@ -296,8 +302,56 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         }
     }
 
+    private void processMessages() throws InterruptedException {
+        Message msg = incomingMessages.take();
+        switch (msg.getMessageType()){
+            case ELECTION:
+                //there should be no elections after the initial one (as of stage 3). If so, assume this is an error
+                // and ignore it.
+                break;
+            case WORK:
+                //we need to create a request ID so we know where to send responses. Note that this will override the
+                //original id if it exists.
+                //TODO: make logic to preserve message id if it exists
+                if(msg.getRequestID() == -1L) {
+                    msg = new Message(msg.getMessageType(), msg.getMessageContents(), msg.getSenderHost(), msg.getSenderPort(),
+                            msg.getReceiverHost(), msg.getReceiverPort(), requestIDGenerator.getAndIncrement());
+                    requestIdtoAddress.put(msg.getRequestID(), new InetSocketAddress(msg.getSenderHost(), msg.getSenderPort()));
+                }
+                //Since apparently we need to both respond to requests directly, as well manage the roundRobinLeader,
+                //what we do depends on what we are:
+                if(this.state == LEADING){
+                    //we are the leader. Give work item to roundRobinLeader to schedule
+                    roundRobinWork.put(msg);
+                }
+                else if(this.state == FOLLOWING){
+                    //we are a follower. In stage 3, we just deal with the task directly
+                    javaRunnerWorkItems.put(msg);
+                }
+                break;
+            case COMPLETED_WORK:
+                //need to send the completed work item to the requester.
+                //If I am the requester, process it here. Otherwise pass it on:
+                InetSocketAddress destination = requestIdtoAddress.get(msg.getRequestID());
+                if(destination.equals(getMyAddress())){
+                    log.log(Level.INFO, "Tried to send completed work item {0} to self: {1}", new Object[]{msg, destination});
+
+                }
+                else {
+                    sendMessage(Message.MessageType.COMPLETED_WORK, msg.getRequestID(), msg.getMessageContents(), destination);
+                    log.log(Level.INFO, "Sent completed work item {0} to destination {1}", new Object[]{msg, destination});
+                }
+                break;
+            default:
+                log.log(Level.WARNING, "Received unexpected message. Ignoring: {0}", msg);
+        }
+    }
+
     public InetSocketAddress getMyAddress() {
         return getAddress();
+    }
+    public InetSocketAddress getLeaderAddress(){
+        return peerIDtoAddress.get(currentLeader.getProposedLeaderID());
     }
 
 
@@ -326,9 +380,14 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     @Override
     public void sendMessage(Message.MessageType type, byte[] messageContents, InetSocketAddress target)
             throws IllegalArgumentException {
+        sendMessage(type, -1L, messageContents, target);
+    }
+
+    public void sendMessage(Message.MessageType type, Long requestID, byte[] messageContents, InetSocketAddress target)
+            throws IllegalArgumentException {
         //based off of sendBroadcast:
         Message msg = new Message(type, messageContents,
-                myAddress.getHostString(), myPort, target.getHostString(), target.getPort());
+                myAddress.getHostString(), myPort, target.getHostString(), target.getPort(), requestID);
         this.outgoingMessages.offer(msg);
     }
 

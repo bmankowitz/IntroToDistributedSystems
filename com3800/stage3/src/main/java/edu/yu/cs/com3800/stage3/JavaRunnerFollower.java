@@ -1,9 +1,16 @@
 package edu.yu.cs.com3800.stage3;
 
+import edu.yu.cs.com3800.JavaRunner;
 import edu.yu.cs.com3800.LoggingServer;
 import edu.yu.cs.com3800.Message;
+import edu.yu.cs.com3800.Util;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,7 +45,13 @@ public class JavaRunnerFollower extends Thread implements LoggingServer {
                 Message workItem = this.workQueue.poll();
                 if (workItem != null) {
                     logger.log(Level.INFO, "Received work item: {0}", workItem);
-                    processWorkItem(workItem);
+                    String result = processWorkItem(workItem);
+                    Message resultMessage = new Message(Message.MessageType.COMPLETED_WORK,
+                            result.getBytes(StandardCharsets.UTF_8), server.getAddress().getHostString(),
+                            server.getUdpPort(), server.getLeaderAddress().getHostString(),
+                            server.getLeaderAddress().getPort(), workItem.getRequestID());
+                    server.sendMessage(Message.MessageType.COMPLETED_WORK, resultMessage.getRequestID(),
+                            resultMessage.getMessageContents(), server.getLeaderAddress());
                     logger.log(Level.INFO, "Processed work item: {0}", workItem);
                 }
             }
@@ -49,7 +62,28 @@ public class JavaRunnerFollower extends Thread implements LoggingServer {
         this.logger.log(Level.SEVERE,"Exiting JavaRunnerFollower.run()");
     }
 
-    private void processWorkItem(Message workItem) {
-        //TODO: should just be a copy/paste from stage1
+    private String processWorkItem(Message workItem) throws IOException {
+        logger.log(Level.INFO, "Received the following request (code to compile):{0}", new String(workItem.getMessageContents()));
+        InputStream is = new ByteArrayInputStream(workItem.getMessageContents());
+        StringBuilder response;
+
+        //Now to run through the javarunner:
+        JavaRunner javaRunner = new JavaRunner();
+        try {
+            response = new StringBuilder(javaRunner.compileAndRun(is));
+        } catch (Exception e) {
+            //There was some sort of exception. Need to create stack trace:
+            response = new StringBuilder();
+            response.append(e.getMessage());
+            response.append("\n");
+            response.append(Util.getStackTrace(e));
+            logger.info("Code generated the following error(s): " +response);
+
+            //Sending the error back to client:
+            return response.toString();
+        }
+        //if we get here, the code compiled and gave a result:
+        logger.info("Code compiled successfully and returned: " +response);
+        return response.toString();
     }
 }

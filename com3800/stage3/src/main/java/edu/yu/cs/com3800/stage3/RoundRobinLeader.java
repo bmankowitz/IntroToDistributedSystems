@@ -21,8 +21,6 @@ public class RoundRobinLeader extends Thread implements LoggingServer {
     private final ArrayList<InetSocketAddress> workerServers;
     private ZooKeeperPeerServerImpl server;
     private Map<Long, InetSocketAddress> requestIDtoAddress = new HashMap<>();
-    //todo: determine if only work messages require id
-    private AtomicLong requestIDGenerator = new AtomicLong(0L);
 
     public RoundRobinLeader(ZooKeeperPeerServerImpl server, LinkedBlockingQueue<Message> messageQueue) {
         this.server = server;
@@ -43,20 +41,24 @@ public class RoundRobinLeader extends Thread implements LoggingServer {
             try {
                 if(this.logger == null){
                     this.logger = initializeLogging(RoundRobinLeader.class.getCanonicalName() + "-on-server-with-udpPort-");
+                    logger.log(Level.INFO, "Logging started. Next server {0}", nextServer);
                 }
                 //probably assume that all messages have been sanitized. iterate through each node and deliver message:
                 //something like:
-                if(nextServer > workerServers.size()) nextServer = 0;
+                if(nextServer >= workerServers.size()) nextServer = 0;
                 //TODO: get the actual message
+                logger.log(Level.INFO, "Next server {0}", nextServer);
                 Message msg = messageQueue.take();
                 if(msg.getMessageType() != Message.MessageType.WORK) throw new RuntimeException("UNEXPECTED MESSAGE TYPE");
+                if(msg.getRequestID() == -1L) throw new RuntimeException("This message should have a request ID");
                 requestIDtoAddress.put(msg.getRequestID(), new InetSocketAddress(msg.getSenderHost(), msg.getSenderPort()));
                 logger.log(Level.INFO, "Received message {0}. Sending to {1}", new Object[]{msg,workerServers.get(nextServer)});
-                server.sendMessage(Message.MessageType.WORK, msg.getMessageContents(), workerServers.get(nextServer));
+                server.sendMessage(Message.MessageType.WORK, msg.getRequestID(), msg.getMessageContents(), workerServers.get(nextServer));
                 nextServer++;
             }
             catch (IOException | InterruptedException e) {
                 this.logger.log(Level.WARNING,"Exception trying to process workItem", e);
+                throw new RuntimeException();
             }
         }
         this.logger.log(Level.SEVERE,"Exiting RoundRobinLeader.run()");

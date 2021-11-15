@@ -77,8 +77,10 @@ public class Stage3Test {
     @Test
     public void leaderElectionSuccess() throws InterruptedException {
         Vote v = servers.get(0).lookForLeader();
-        servers.forEach(server ->
-                Assert.assertEquals(2555555L, server.getCurrentLeader().getProposedLeaderID()));
+        servers.forEach(server ->{
+                    Assert.assertEquals(2555555L, server.getCurrentLeader().getProposedLeaderID());
+                    server.shutdown();
+                });
     }
     @Test
     public void lowerEpochIsUpdated() throws InterruptedException {
