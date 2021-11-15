@@ -8,9 +8,7 @@ import edu.yu.cs.com3800.Util;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -18,7 +16,7 @@ import java.util.logging.Logger;
 public class JavaRunnerFollower extends Thread implements LoggingServer {
     private final String serverUdpPort;
     private final LinkedBlockingQueue<Message> workQueue;
-    private ZooKeeperPeerServerImpl server;
+    private final ZooKeeperPeerServerImpl server;
     private Logger logger;
 
 
@@ -41,7 +39,7 @@ public class JavaRunnerFollower extends Thread implements LoggingServer {
                 if(this.logger == null){
                     this.logger = initializeLogging(JavaRunnerFollower.class.getCanonicalName() + "-on-server-with-udpPort-" + this.serverUdpPort);
                 }
-                //TODO: probably want to switch to take for performance reasons. Just make sure it is interruptible
+
                 Message workItem = this.workQueue.poll();
                 if (workItem != null) {
                     logger.log(Level.INFO, "Received work item: {0}", workItem);

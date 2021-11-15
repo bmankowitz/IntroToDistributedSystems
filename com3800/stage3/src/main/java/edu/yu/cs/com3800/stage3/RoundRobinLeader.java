@@ -9,8 +9,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -19,8 +17,8 @@ public class RoundRobinLeader extends Thread implements LoggingServer {
     private final LinkedBlockingQueue<Message> messageQueue;
     int nextServer = 0;
     private final ArrayList<InetSocketAddress> workerServers;
-    private ZooKeeperPeerServerImpl server;
-    private Map<Long, InetSocketAddress> requestIDtoAddress = new HashMap<>();
+    private final ZooKeeperPeerServerImpl server;
+    private final Map<Long, InetSocketAddress> requestIDtoAddress = new HashMap<>();
 
     public RoundRobinLeader(ZooKeeperPeerServerImpl server, LinkedBlockingQueue<Message> messageQueue) {
         this.server = server;
@@ -46,7 +44,6 @@ public class RoundRobinLeader extends Thread implements LoggingServer {
                 //probably assume that all messages have been sanitized. iterate through each node and deliver message:
                 //something like:
                 if(nextServer >= workerServers.size()) nextServer = 0;
-                //TODO: get the actual message
                 logger.log(Level.INFO, "Next server {0}", nextServer);
                 Message msg = messageQueue.take();
                 if(msg.getMessageType() != Message.MessageType.WORK) throw new RuntimeException("UNEXPECTED MESSAGE TYPE");

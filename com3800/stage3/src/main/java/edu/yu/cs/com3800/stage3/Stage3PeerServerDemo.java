@@ -20,17 +20,19 @@ public class Stage3PeerServerDemo {
     private InetSocketAddress myAddress = new InetSocketAddress("localhost", this.myPort);
     private ArrayList<ZooKeeperPeerServerImpl> servers;
     private final int senderPort = 8002;
+    private final UDPMessageReceiver receiver;
+    private final UDPMessageSender sender;
     private final int receiverPort = 8003;
 
     public Stage3PeerServerDemo() throws Exception {
         //step 1: create sender & sending queue
         this.outgoingMessages = new LinkedBlockingQueue<>();
-        UDPMessageSender sender = new UDPMessageSender(this.outgoingMessages, senderPort);
+        sender = new UDPMessageSender(this.outgoingMessages, senderPort);
         //step 2: create servers
         createServers();
         //step2.1: wait for servers to get started
         try {
-            Thread.sleep(3000);
+            Thread.sleep(1000);
         }
         catch (Exception e) {
         }
@@ -42,7 +44,7 @@ public class Stage3PeerServerDemo {
         }
         Util.startAsDaemon(sender, "Sender thread");
         this.incomingMessages = new LinkedBlockingQueue<>();
-        UDPMessageReceiver receiver = new UDPMessageReceiver(this.incomingMessages, this.myAddress, this.myPort, null);
+        receiver = new UDPMessageReceiver(this.incomingMessages, this.myAddress, this.myPort, null);
         Util.startAsDaemon(receiver, "Receiver thread");
         //step 4: validate responses from leader
 
@@ -65,6 +67,9 @@ public class Stage3PeerServerDemo {
         for (ZooKeeperPeerServer server : this.servers) {
             server.shutdown();
         }
+        sender.shutdown();
+        receiver.shutdown();
+        System.exit(0);
     }
 
     private void printResponses() throws Exception {

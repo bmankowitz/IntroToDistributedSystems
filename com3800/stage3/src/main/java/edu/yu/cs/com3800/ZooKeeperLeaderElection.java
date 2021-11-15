@@ -6,9 +6,6 @@ import edu.yu.cs.com3800.stage3.ZooKeeperPeerServerImpl;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import static edu.yu.cs.com3800.ZooKeeperPeerServer.ServerState.LOOKING;
-import static edu.yu.cs.com3800.ZooKeeperPeerServer.ServerState.getServerState;
-
 public class ZooKeeperLeaderElection {
     /**
      * time to wait once we believe we've reached the end of leader election.
@@ -43,7 +40,7 @@ public class ZooKeeperLeaderElection {
     }
 
     public synchronized Vote lookForLeader() {
-        //the logic has been migrated to ZooKeepE
+        //the logic has been migrated to ZooKeeperPeerServerImpl
         return null;
     }
 
@@ -51,6 +48,8 @@ public class ZooKeeperLeaderElection {
     }
 
     private Vote acceptElectionWinner(ElectionNotification n) {
+        //the logic has been migrated to ZooKeeperPeerServerImpl
+
         //set my state to either LEADING or FOLLOWING
         //clear out the incoming queue before returning
         return null;
@@ -70,6 +69,8 @@ public class ZooKeeperLeaderElection {
      * Who voted for who isn't relevant, we only care that each server has one current vote
      */
     protected boolean haveEnoughVotes(Map<Long, ElectionNotification> votes, Vote proposal) {
+        //the logic has been migrated to ZooKeeperPeerServerImpl
+
         //is the number of votes for the proposal > the size of my peer server’s quorum?
         return false;
     }

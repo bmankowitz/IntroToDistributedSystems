@@ -1,9 +1,5 @@
 package edu.yu.cs.com3800.stage3;
 
-import edu.yu.cs.com3800.ElectionNotification;
-import edu.yu.cs.com3800.Message;
-import edu.yu.cs.com3800.Vote;
-import edu.yu.cs.com3800.ZooKeeperPeerServer;
 import edu.yu.cs.com3800.*;
 import org.junit.After;
 import org.junit.Assert;
@@ -15,14 +11,30 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class Stage3Test {
 
+    private final String validClass = "package edu.yu.cs.fall2019.com3800.stage1;\n\npublic class HelloWorld\n{\n    public String run()\n    {\n        return \"Hello world!\";\n    }\n}\n";
     private HashMap<Long, InetSocketAddress> peerIDtoAddress;
     private ArrayList<ZooKeeperPeerServerImpl> servers;
+    private final int myPort = 9999;
+    private final int receiverPort = 8003;
+    private final InetSocketAddress myAddress = new InetSocketAddress("localhost", this.myPort);
+    private LinkedBlockingQueue<Message> outgoingMessages;
+    private LinkedBlockingQueue<Message> incomingMessages;
 
     @Before
     public void setUp() throws Exception {
+        //step 1: create sender & sending queue
+        this.outgoingMessages = new LinkedBlockingQueue<>();
+        this.incomingMessages = new LinkedBlockingQueue<>();
+        int senderPort = 8002;
+        UDPMessageSender sender = new UDPMessageSender(this.outgoingMessages, senderPort);
+        UDPMessageReceiver receiver = new UDPMessageReceiver(this.incomingMessages, myAddress, this.myPort, null);
+        Util.startAsDaemon(sender, "Sender thread");
+        Util.startAsDaemon(receiver, "Receiver thread");
+
         //create IDs and addresses
         HashMap<Long, InetSocketAddress> peerIDtoAddress = new HashMap<>(3);
         peerIDtoAddress.put(1L, new InetSocketAddress("localhost", 8010));
@@ -132,50 +144,158 @@ public class Stage3Test {
         Vote v = servers1.get(0).lookForLeader();
     }
     @Test
-    public void electLeaderAndDistributeWork() throws InterruptedException {
+    public void electLeaderAndEvaluateSingleIncorrectCode() throws InterruptedException {
         Vote v = servers.get(0).lookForLeader();
-        servers.forEach(server ->
-                Assert.assertEquals(2555555L, server.getCurrentLeader().getProposedLeaderID()));
         //send message to leader
-        servers.get(0).sendBroadcast(Message.MessageType.WORK, "test".getBytes(StandardCharsets.UTF_8));
-        servers.forEach(ZooKeeperPeerServerImpl::shutdown);
-        Assert.fail("need to implement test");
+        sendMessage("uncompilable code", servers.get(0).getLeaderAddress().getPort());
+        Assert.assertTrue(nextResponse().contains("No class name found in code"));
+    }
+    @Test
+    public void electLeaderAndEvaluateSingleCorrectCode() throws InterruptedException {
+        Vote v = servers.get(0).lookForLeader();
+        //send message to leader
+        sendMessage(validClass, servers.get(0).getLeaderAddress().getPort());
+        Assert.assertTrue(nextResponse().contains("Hello world!"));
+    }
+    @Test
+    public void electLeaderAndEvaluateMultipleCorrectCode() throws InterruptedException {
+        int iterations = 3;
+        Vote v = servers.get(0).lookForLeader();
+        //send message to leader
+        for (int i = 0; i < iterations; i++) {
+            sendMessage(validClass, servers.get(0).getLeaderAddress().getPort());
+        }
+        Thread.sleep(1500);
+        for(Message msg : incomingMessages){
+            iterations--;
+            String resp = new String(msg.getMessageContents());
+            Assert.assertTrue(resp.contains("Hello world!"));
+        }
+    }
+    @Test
+    public void electLeaderAndEvaluateMultipleIncorrectCode() throws InterruptedException {
+        int iterations = 3;
+        Vote v = servers.get(0).lookForLeader();
+        //send message to leader
+        for (int i = 0; i < iterations; i++) {
+            sendMessage("validClass", servers.get(0).getLeaderAddress().getPort());
+        }
+        Thread.sleep(1500);
+        for(Message msg : incomingMessages){
+            iterations--;
+            String resp = new String(msg.getMessageContents());
+            Assert.assertTrue(resp.contains("No class name found in code"));
+        }
+        Assert.assertEquals(0, iterations);
+    }
+    @Test
+    public void electLeaderAndEvaluateActualNodeCountCorrectCode() throws InterruptedException {
+        int iterations = servers.size();
+        Vote v = servers.get(0).lookForLeader();
+        //send message to leader
+        for (int i = 0; i < iterations; i++) {
+            sendMessage(validClass, servers.get(0).getLeaderAddress().getPort());
+        }
+        Thread.sleep(3500);
+        for(Message msg : incomingMessages){
+            iterations--;
+            String resp = new String(msg.getMessageContents());
+            Assert.assertTrue(resp.contains("Hello world!"));
+        }
+        Assert.assertEquals(0, iterations);
+    }
+    @Test
+    public void electLeaderAndEvaluateActualNodeCountIncorrectCode() throws InterruptedException {
+        int iterations = servers.size();
+        Vote v = servers.get(0).lookForLeader();
+        //send message to leader
+        for (int i = 0; i < iterations; i++) {
+            sendMessage("validClass", servers.get(0).getLeaderAddress().getPort());
+        }
+        Thread.sleep(1500);
+        for(Message msg : incomingMessages){
+            iterations--;
+            String resp = new String(msg.getMessageContents());
+            Assert.assertTrue(resp.contains("No class name found in code"));
+        }
+        Assert.assertEquals(0, iterations);
     }
 
     @Test
-    public void electLeaderAndSendMoreWorkItemsThanNodes() throws InterruptedException {
+    public void electLeaderAndEvaluateMoreThanNodeCountCorrectCode() throws InterruptedException {
+        int iterations = servers.size()*3;
         Vote v = servers.get(0).lookForLeader();
-        servers.forEach(server ->
-                Assert.assertEquals(2555555L, server.getCurrentLeader().getProposedLeaderID()));
         //send message to leader
-        servers.get(0).sendBroadcast(Message.MessageType.WORK, "test".getBytes(StandardCharsets.UTF_8));
-        servers.forEach(ZooKeeperPeerServerImpl::shutdown);
-        Assert.fail("need to implement test");
+        for (int i = 0; i < iterations; i++) {
+            sendMessage("validClass", servers.get(0).getLeaderAddress().getPort());
+        }
+        Thread.sleep(1500);
+        for(Message msg : incomingMessages){
+            iterations--;
+            String resp = new String(msg.getMessageContents());
+            Assert.assertTrue(resp.contains("No class name found in code"));
+        }
+        Assert.assertEquals(0, iterations);
+    }
+
+    @Test
+    public void electLeaderAndEvaluateMoreThanNodeCountIncorrectCode() throws InterruptedException {
+        int iterations = servers.size()*3;
+        Vote v = servers.get(0).lookForLeader();
+        //send message to leader
+        for (int i = 0; i < iterations; i++) {
+            sendMessage("validClass", servers.get(0).getLeaderAddress().getPort());
+        }
+        //wait for processing to complete. Note that the requests are asynchronous and nonblocking, but it takes time
+        //to evaluate all of them
+        Thread.sleep(1500);
+        for(Message msg : incomingMessages){
+            iterations--;
+            String resp = new String(msg.getMessageContents());
+            Assert.assertTrue(resp.contains("No class name found in code"));
+        }
+        Assert.assertEquals(0, iterations);
     }
     @Test
-    public void electLeaderAndSendWorkDirectlyToNode() throws InterruptedException {
-        //Per piazza (TODO:TICKET NO) A message directly to a worker node should return the result, even though in
-        //future iterations it should only respond to the leader
+    public void electLeaderAndSendCorrectCodeDirectlyToWorker() throws InterruptedException {
+        //Per piazza (https://piazza.com/class/ksjkv7bd6th1jf?cid=114_f1)
+        // A message directly to a worker node should return the result, even though in
+        // future iterations it should only respond to the leader
         Vote v = servers.get(0).lookForLeader();
-        servers.forEach(server ->
-                Assert.assertEquals(2555555L, server.getCurrentLeader().getProposedLeaderID()));
-        //send message to leader
-        servers.get(0).sendBroadcast(Message.MessageType.WORK, "test".getBytes(StandardCharsets.UTF_8));
+        //send message to random server
+        sendMessage(validClass, servers.get(4).getUdpPort());
+        Assert.assertTrue(nextResponse().contains("Hello world!"));
         servers.forEach(ZooKeeperPeerServerImpl::shutdown);
-        Assert.fail("need to implement test");
+    }
+    @Test
+    public void electLeaderAndSendIncorrectCodeDirectlyToWorker() throws InterruptedException {
+        //Per piazza (https://piazza.com/class/ksjkv7bd6th1jf?cid=114_f1)
+        // A message directly to a worker node should return the result, even though in
+        // future iterations it should only respond to the leader
+        Vote v = servers.get(0).lookForLeader();
+        //send message to random server
+        sendMessage("validClass", servers.get(4).getUdpPort());
+        Assert.assertTrue(nextResponse().contains("No class name found in code"));
+        servers.forEach(ZooKeeperPeerServerImpl::shutdown);
     }
     @Test
     public void electLeaderAndShutdownKillsAllThreads() throws InterruptedException {
-        //Per piazza (TODO:TICKET NO) A message directly to a worker node should return the result, even though in
-        //future iterations it should only respond to the leader
+        //Per piazza (https://piazza.com/class/ksjkv7bd6th1jf?cid=114_f1)
+        // A message directly to a worker node should return the result, even though in
+        // future iterations it should only respond to the leader
         Vote v = servers.get(0).lookForLeader();
-        servers.forEach(server ->
-                Assert.assertEquals(2555555L, server.getCurrentLeader().getProposedLeaderID()));
         //send message to leader
         servers.forEach(ZooKeeperPeerServerImpl::shutdown);
         Thread.sleep(400);
         servers.forEach(server ->
                 Assert.assertFalse(server.isAlive()));
-        Assert.fail("need to test other threads as well, such as messenger threads and javarunner/roundrobinleader");
+    }
+    private void sendMessage(String code, int leaderPort) throws InterruptedException {
+        Message msg = new Message(Message.MessageType.WORK, code.getBytes(), this.myAddress.getHostString(), this.myPort, "localhost", leaderPort);
+        this.outgoingMessages.put(msg);
+    }
+    private String nextResponse() throws InterruptedException {
+        Message msg = this.incomingMessages.take();
+        return new String(msg.getMessageContents());
     }
 }

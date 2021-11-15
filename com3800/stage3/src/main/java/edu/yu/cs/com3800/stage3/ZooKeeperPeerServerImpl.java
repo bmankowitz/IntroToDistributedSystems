@@ -32,12 +32,12 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     private long peerEpoch;
     private volatile Vote currentLeader;
     public final Map<Long,InetSocketAddress> peerIDtoAddress;
-    public Map<Long,ElectionNotification> peerIDtoVote = new HashMap<>();
+    public final Map<Long,ElectionNotification> peerIDtoVote = new HashMap<>();
     private Logger log;
     private UDPMessageSender senderWorker;
     private UDPMessageReceiver receiverWorker;
-    //TODO: use this to generate unique IDs for every (work) request
-    static AtomicLong requestIDGenerator = new AtomicLong(0);
+    //Used to generate unique IDs for every (work) request
+    static final AtomicLong requestIDGenerator = new AtomicLong(0);
     static final Map<Long, InetSocketAddress> requestIdtoAddress = new HashMap<>();
 
 
@@ -54,8 +54,6 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         try {
             log = initializeLogging("ZKPeer" + id, false);
         } catch (Exception e) {e.printStackTrace();}
-        //code here...
-        //TODO: what is the initial states:?
         state = ServerState.LOOKING;
         currentLeader = new Vote(this.id, this.peerEpoch);
     }
@@ -100,15 +98,15 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
                     //if the received message has a vote for a leader which supersedes mine, change my vote and tell all my peers what my new vote is.
                     //keep track of the votes I received and who I received them from.
                     if(supersedesCurrentVote(vote.getSenderID(),vote.getPeerEpoch())){
-                        log.log(Level.WARNING, "received vote {0} supersedes current vote: {1}", new Vote[]{vote, currentLeader});
+                        log.log(Level.INFO, "received vote {0} supersedes current vote: {1}", new Vote[]{vote, currentLeader});
                         setCurrentLeader(createElectionNotificationFromVote(vote));
                         sendBroadcast(Message.MessageType.ELECTION, buildMsgContent(createElectionNotificationFromVote(currentLeader)));
-                        log.log(Level.WARNING, "broadcast new vote {0}", currentLeader);
+                        log.log(Level.INFO, "broadcast new vote {0}", currentLeader);
                     }
                     ////if I have enough votes to declare my currently proposed leader as the leader:
                     if(haveEnoughVotes(peerIDtoVote, currentLeader)){
                         //first check if there are any new votes for a higher ranked possible leader before I declare a leader. If so, continue in my election loop
-                        log.log(Level.WARNING, "Found enough votes. Double checking");
+                        log.log(Level.INFO, "Found enough votes. Double checking");
                         for (Message msg : incomingMessages) {
                             ElectionNotification latestVote = getNotificationFromMessage(msg);
                             if (supersedesCurrentVote(latestVote.getProposedLeaderID(), latestVote.getPeerEpoch())) {
