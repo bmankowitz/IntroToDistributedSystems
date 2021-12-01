@@ -52,10 +52,11 @@ public class RoundRobinLeader extends Thread implements LoggingServer {
                 logger.log(Level.INFO, "Received message {0}. Sending to {1}", new Object[]{msg,workerServers.get(nextServer)});
                 server.sendMessage(Message.MessageType.WORK, msg.getRequestID(), msg.getMessageContents(), workerServers.get(nextServer));
                 nextServer++;
-            }
-            catch (IOException | InterruptedException e) {
-                this.logger.log(Level.WARNING,"Exception trying to process workItem", e);
+            } catch (IOException e) {
+                this.logger.log(Level.SEVERE,"Exception trying to process workItem", e);
                 throw new RuntimeException();
+            } catch (InterruptedException e) {
+                this.logger.log(Level.WARNING,"Received Interrupt in main loop. Exiting...");
             }
         }
         this.logger.log(Level.SEVERE,"Exiting RoundRobinLeader.run()");

@@ -65,6 +65,7 @@ public class Stage3Test {
 
     @After
     public void tearDown() throws Exception {
+        servers.forEach(ZooKeeperPeerServerImpl::shutdown);
     }
 
     @Test

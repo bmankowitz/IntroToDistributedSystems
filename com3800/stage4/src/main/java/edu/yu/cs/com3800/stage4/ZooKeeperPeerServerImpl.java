@@ -146,6 +146,9 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
                         break;
                     }
                     break;
+                case OBSERVER:
+                    log.log(Level.INFO, "Received vote from observer. Discarding: {0}", vote);
+                    break;
             }
         }
         return currentLeader;
@@ -436,15 +439,19 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     }
 
     /**
-     * For stage 2, this method returns the size of the peerIDtoAddress map. At this stage,
+     * For stage 4, this method returns the number of non-observer nodes. At this stage,
      * there is no capability to dynamically add or remove peers, and peers are assumed to
      * always be alive
      * @return
      */
     @Override
     public int getQuorumSize() {
-        //if the peer address map doesn't include itself, add 1:
-        if(peerIDtoAddress.containsKey(id)) return peerIDtoAddress.size()/2 + 1;
-        else return (peerIDtoAddress.size() + 1)/2 +1;
+        int count = 0;
+        for(ElectionNotification en : peerIDtoVote.values()){
+            if(en.getState() != OBSERVER) count++;
+        }
+        //if the peer vote map doesn't include itself, add 1:
+        if(peerIDtoVote.containsKey(id)) return count/2 + 1;
+        else return (count + 1)/2 +1;
     }
 }
