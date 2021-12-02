@@ -6,70 +6,16 @@ import edu.yu.cs.com3800.ZooKeeperPeerServer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Map;
 
-public class GatewayPeerServerImpl implements ZooKeeperPeerServer {
-    @Override
-    public void shutdown() {
+public class GatewayPeerServerImpl extends ZooKeeperPeerServerImpl {
 
+    public GatewayPeerServerImpl(int myPort, long peerEpoch, Long id, Map<Long, InetSocketAddress> peerIDtoAddress) {
+        super(myPort, peerEpoch, id, peerIDtoAddress);
+        setPeerState(ServerState.OBSERVER);
+        //this should hopefully ensure the observer doesn't vote for itself
+//        setCurrentLeader(new Vote(-1L, -1L));
     }
 
-    @Override
-    public void setCurrentLeader(Vote v) throws IOException {
 
-    }
-
-    @Override
-    public Vote getCurrentLeader() {
-        return null;
-    }
-
-    @Override
-    public void sendMessage(Message.MessageType type, byte[] messageContents, InetSocketAddress target) throws IllegalArgumentException {
-
-    }
-
-    @Override
-    public void sendBroadcast(Message.MessageType type, byte[] messageContents) {
-
-    }
-
-    @Override
-    public ServerState getPeerState() {
-        return null;
-    }
-
-    @Override
-    public void setPeerState(ServerState newState) {
-
-    }
-
-    @Override
-    public Long getServerId() {
-        return null;
-    }
-
-    @Override
-    public long getPeerEpoch() {
-        return 0;
-    }
-
-    @Override
-    public InetSocketAddress getAddress() {
-        return null;
-    }
-
-    @Override
-    public int getUdpPort() {
-        return 0;
-    }
-
-    @Override
-    public InetSocketAddress getPeerByID(long peerId) {
-        return null;
-    }
-
-    @Override
-    public int getQuorumSize() {
-        return 0;
-    }
 }

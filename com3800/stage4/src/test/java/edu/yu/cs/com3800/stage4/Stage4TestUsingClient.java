@@ -1,4 +1,4 @@
-package edu.yu.cs.com3800.stage4 ;
+package edu.yu.cs.com3800.stage4;
 
 import edu.yu.cs.com3800.*;
 import org.junit.After;
@@ -13,13 +13,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class Stage3Test {
+public class Stage4TestUsingClient {
 
     private final String validClass = "package edu.yu.cs.fall2019.com3800.stage1;\n\npublic class HelloWorld\n{\n    public String run()\n    {\n        return \"Hello world!\";\n    }\n}\n";
     private HashMap<Long, InetSocketAddress> peerIDtoAddress;
     private ArrayList<ZooKeeperPeerServerImpl> servers;
     private final int myPort = 9999;
-    private final int receiverPort = 8003;
     private final InetSocketAddress myAddress = new InetSocketAddress("localhost", this.myPort);
     private LinkedBlockingQueue<Message> outgoingMessages;
     private LinkedBlockingQueue<Message> incomingMessages;
@@ -45,13 +44,18 @@ public class Stage3Test {
         peerIDtoAddress.put(6L, new InetSocketAddress("localhost", 8060));
         peerIDtoAddress.put(7L, new InetSocketAddress("localhost", 8070));
         peerIDtoAddress.put(8L, new InetSocketAddress("localhost", 8080));
+        //gateway:
+        peerIDtoAddress.put(44L, new InetSocketAddress("localhost", 8000));
 
         //create servers
         servers = new ArrayList<>(3);
         for (Map.Entry<Long, InetSocketAddress> entry : peerIDtoAddress.entrySet()) {
             HashMap<Long, InetSocketAddress> map = (HashMap<Long, InetSocketAddress>) peerIDtoAddress.clone();
             map.remove(entry.getKey());
-            ZooKeeperPeerServerImpl server = new ZooKeeperPeerServerImpl(entry.getValue().getPort(), 22, entry.getKey(), map);
+            //hardcoding 44L as the gateway address:
+            ZooKeeperPeerServerImpl server;
+            if(entry.getKey() == 44L) server = new GatewayPeerServerImpl(entry.getValue().getPort(), 22, entry.getKey(), map);
+            else server = new ZooKeeperPeerServerImpl(entry.getValue().getPort(), 22, entry.getKey(), map);
             servers.add(server);
             new Thread(server, "Server on port " + server.getMyAddress().getPort()).start();
         }
@@ -67,6 +71,9 @@ public class Stage3Test {
     public void tearDown() throws Exception {
         servers.forEach(ZooKeeperPeerServerImpl::shutdown);
     }
+    //==================================================
+    //===============  STAGE 4 TESTS  ==================
+    //==================================================
 
     @Test
     public void sendBroadcast() {

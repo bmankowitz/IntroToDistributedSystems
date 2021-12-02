@@ -57,7 +57,7 @@ public class JavaRunnerFollower extends Thread implements LoggingServer {
                 this.logger.log(Level.WARNING,"Exception trying to process workItem", e);
             }
         }
-        this.logger.log(Level.SEVERE,"Exiting JavaRunnerFollower.run()");
+        if(logger != null) logger.log(Level.SEVERE,"Exiting JavaRunnerFollower.run()");
     }
 
     private String processWorkItem(Message workItem) throws IOException {
