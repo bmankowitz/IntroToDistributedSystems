@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,9 +35,6 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     private Logger log;
     private UDPMessageSender senderWorker;
     private UDPMessageReceiver receiverWorker;
-    //Used to generate unique IDs for every (work) request
-    static final AtomicLong requestIDGenerator = new AtomicLong(0);
-    static final Map<Long, InetSocketAddress> requestIdtoAddress = new HashMap<>();
 
 
     public ZooKeeperPeerServerImpl(int myPort, long peerEpoch, Long id, Map<Long,InetSocketAddress> peerIDtoAddress) {
@@ -328,20 +324,21 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         Message msg = incomingMessages.take();
         switch (msg.getMessageType()){
             case ELECTION:
-                //there should be no elections after the initial one (as of stage 3). If so, assume this is an error
+                //there should be no elections after the initial one (as of stage 4). If so, assume this is an error
                 // and ignore it.
+                log.log(Level.WARNING, "Received unexpected ELECTION message after election: {0}", msg);
                 break;
             case WORK:
                 //we need to create a request ID so we know where to send responses. Note that this will override the
                 //original id if it exists.
-                //TODO: make logic to preserve message id if it exists
+                //TODO: redo logic
                 if(msg.getRequestID() == -1L) {
                     msg = new Message(msg.getMessageType(), msg.getMessageContents(), msg.getSenderHost(), msg.getSenderPort(),
-                            msg.getReceiverHost(), msg.getReceiverPort(), requestIDGenerator.getAndIncrement());
-                    requestIdtoAddress.put(msg.getRequestID(), new InetSocketAddress(msg.getSenderHost(), msg.getSenderPort()));
+                            msg.getReceiverHost(), msg.getReceiverPort(), RoundRobinLeader.requestIDGenerator.getAndIncrement());
+                    RoundRobinLeader.requestIdtoAddress.put(msg.getRequestID(), new InetSocketAddress(msg.getSenderHost(), msg.getSenderPort()));
                 }
-                //Since apparently we need to both respond to requests directly, as well manage the roundRobinLeader,
-                //what we do depends on what we are:
+                //in Stage 4, we do not need to deal with direct requests.
+
                 if(this.state == LEADING){
                     //we are the leader. Give work item to roundRobinLeader to schedule
                     roundRobinWork.put(msg);
@@ -354,7 +351,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
             case COMPLETED_WORK:
                 //need to send the completed work item to the requester.
                 //If I am the requester, process it here. Otherwise pass it on:
-                InetSocketAddress destination = requestIdtoAddress.get(msg.getRequestID());
+                InetSocketAddress destination = RoundRobinLeader.requestIdtoAddress.get(msg.getRequestID());
                 if(destination.equals(getMyAddress())){
                     log.log(Level.INFO, "Tried to send completed work item {0} to self: {1}", new Object[]{msg, destination});
 

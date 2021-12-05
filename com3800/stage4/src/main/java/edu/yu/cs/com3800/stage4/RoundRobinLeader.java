@@ -8,22 +8,28 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class RoundRobinLeader extends Thread implements LoggingServer {
+    //Used to generate unique IDs for every (work) request
+    static final AtomicLong requestIDGenerator = new AtomicLong(0);
+    static final Map<Long, InetSocketAddress> requestIdtoAddress = new ConcurrentHashMap<>();
+    static final ConcurrentHashMap<Long, Message> requestToResults = new ConcurrentHashMap<>();
     private Logger logger;
-    private final LinkedBlockingQueue<Message> messageQueue;
+    private final LinkedBlockingQueue<Message> incomingMessageQueue;
     int nextServer = 0;
     private final ArrayList<InetSocketAddress> workerServers;
     private final ZooKeeperPeerServerImpl server;
     private final Map<Long, InetSocketAddress> requestIDtoAddress = new HashMap<>();
 
-    public RoundRobinLeader(ZooKeeperPeerServerImpl server, LinkedBlockingQueue<Message> messageQueue) {
+    public RoundRobinLeader(ZooKeeperPeerServerImpl server, LinkedBlockingQueue<Message> incomingMessageQueue) {
         this.server = server;
         Map<Long, InetSocketAddress> peerIDtoAddress = server.getPeerIDtoAddress();
-        this.messageQueue = messageQueue;
+        this.incomingMessageQueue = incomingMessageQueue;
         workerServers = new ArrayList<>(peerIDtoAddress.values());
         setDaemon(true);
         setName("RoundRobinLeader-port-");
@@ -45,11 +51,15 @@ public class RoundRobinLeader extends Thread implements LoggingServer {
                 //something like:
                 if(nextServer >= workerServers.size()) nextServer = 0;
                 logger.log(Level.INFO, "Next server {0}", nextServer);
-                Message msg = messageQueue.take();
+                Message msg = incomingMessageQueue.take();
                 if(msg.getMessageType() != Message.MessageType.WORK) throw new RuntimeException("UNEXPECTED MESSAGE TYPE");
-                if(msg.getRequestID() == -1L) throw new RuntimeException("This message should have a request ID");
+                if(msg.getRequestID() == -1L) {
+                    msg = new Message(msg.getMessageType(), msg.getMessageContents(), msg.getSenderHost(), msg.getSenderPort(), msg.getReceiverHost(), msg.getReceiverPort(), requestIDGenerator.getAndIncrement());
+                    logger.log(Level.FINE, "Processed unassigned message and created new id: {0}", msg);
+                }
                 requestIDtoAddress.put(msg.getRequestID(), new InetSocketAddress(msg.getSenderHost(), msg.getSenderPort()));
                 logger.log(Level.INFO, "Received message {0}. Sending to {1}", new Object[]{msg,workerServers.get(nextServer)});
+                //TODO: convert to TCP
                 server.sendMessage(Message.MessageType.WORK, msg.getRequestID(), msg.getMessageContents(), workerServers.get(nextServer));
                 nextServer++;
             } catch (IOException e) {

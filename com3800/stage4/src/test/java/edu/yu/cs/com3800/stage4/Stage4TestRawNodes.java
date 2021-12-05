@@ -37,7 +37,7 @@ public class Stage4TestRawNodes {
         Util.startAsDaemon(receiver, "Receiver thread");
 
         //create IDs and addresses
-        HashMap<Long, InetSocketAddress> peerIDtoAddress = new HashMap<>(3);
+        peerIDtoAddress = new HashMap<>();
         peerIDtoAddress.put(1L, new InetSocketAddress("localhost", 8010));
         peerIDtoAddress.put(2555555L, new InetSocketAddress("localhost", 8020));
         peerIDtoAddress.put(3L, new InetSocketAddress("localhost", 8030));
@@ -50,7 +50,7 @@ public class Stage4TestRawNodes {
         peerIDtoAddress.put(44L, new InetSocketAddress("localhost", 8000));
 
         //create servers
-        servers = new ArrayList<>(3);
+        servers = new ArrayList<>();
         for (Map.Entry<Long, InetSocketAddress> entry : peerIDtoAddress.entrySet()) {
             HashMap<Long, InetSocketAddress> map = (HashMap<Long, InetSocketAddress>) peerIDtoAddress.clone();
             map.remove(entry.getKey());
@@ -74,6 +74,8 @@ public class Stage4TestRawNodes {
         servers.forEach(ZooKeeperPeerServerImpl::shutdown);
         sender.shutdown();
         receiver.shutdown();
+        peerIDtoAddress.clear();
+        servers.clear();
         Thread.sleep(5000);
 
     }
