@@ -43,6 +43,31 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
         this.isHost = isHost;
         this.initialMessage = msg;
     }
+    public static Socket startTcpServer(InetSocketAddress address) throws IOException{
+        Logger logger = Logger.getAnonymousLogger();
+        ServerSocket serverSocket = new ServerSocket(address.getPort());
+        logger.log(Level.INFO, "Created new serversocket on port {0}", address.getPort());
+        Socket client = serverSocket.accept();
+        return client;
+    }
+    public static Socket connectTcpServer(InetSocketAddress address) throws IOException{
+        Logger logger = Logger.getAnonymousLogger();
+        Socket client = new Socket(address.getHostString(), address.getPort());
+        logger.log(Level.INFO, "Connected to TCPServer on port {0}", address.getPort());
+        return client;
+    }
+    public static void sendMessage(Socket socket, byte[] data) throws IOException {
+        socket.getOutputStream().write(data);
+    }
+    public static byte[] receiveMessage(Socket socket) throws IOException {
+        return Util.readAllBytesFromNetwork(socket.getInputStream());
+    }
+    public static void closeConnection(Socket socket) throws IOException {
+        Logger logger = Logger.getAnonymousLogger();
+        logger.log(Level.INFO, "shutting down socket {0}", socket);
+        socket.close();
+        if(socket.isClosed()) logger.log(Level.INFO, "Successfully shut down socket {0}", socket);
+    }
     public static void sendTCPMessage(InetSocketAddress target, MessageType msgType, Message msg){
         new TCPServer(null, msgType, target, true, msg).start();
     }

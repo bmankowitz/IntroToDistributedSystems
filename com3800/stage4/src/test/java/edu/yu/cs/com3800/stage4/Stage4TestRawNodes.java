@@ -6,6 +6,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -93,6 +94,7 @@ public class Stage4TestRawNodes {
                 servers.get(1).getMyAddress());
 //        servers.get(1);
     }
+
     @Test
     public void sendElectionMessage() {
         ElectionNotification elec = new ElectionNotification(123, ZooKeeperPeerServer.ServerState.FOLLOWING, -234, 43);

@@ -9,7 +9,7 @@ import java.util.logging.*;
 public interface LoggingServer {
     public default Logger initializeLogging(String fileNamePreface, boolean disableParentHandlers) throws IOException {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd-kk_mm");
-        String folderName = "Stage3Logs_" + dtf.format(LocalDateTime.now());
+        String folderName = "Stage4Logs_" + dtf.format(LocalDateTime.now());
         File folder = new File(folderName);
         folder.mkdir();
         System.setProperty("java.util.logging.FileHandler.formatter", "java.util.logging.SimpleFormatter");
