@@ -29,10 +29,10 @@ public class Stage4TestUsingClient {
         this.outgoingMessages = new LinkedBlockingQueue<>();
         this.incomingMessages = new LinkedBlockingQueue<>();
         int senderPort = 8002;
-        UDPMessageSender sender = new UDPMessageSender(this.outgoingMessages, senderPort);
-        UDPMessageReceiver receiver = new UDPMessageReceiver(this.incomingMessages, myAddress, this.myPort, null);
-        Util.startAsDaemon(sender, "Sender thread");
-        Util.startAsDaemon(receiver, "Receiver thread");
+//        UDPMessageSender sender = new UDPMessageSender(this.outgoingMessages, senderPort);
+//        UDPMessageReceiver receiver = new UDPMessageReceiver(this.incomingMessages, myAddress, this.myPort, null);
+//        Util.startAsDaemon(sender, "Sender thread");
+//        Util.startAsDaemon(receiver, "Receiver thread");
 
         //create IDs and addresses
         HashMap<Long, InetSocketAddress> peerIDtoAddress = new HashMap<>(3);
@@ -63,7 +63,7 @@ public class Stage4TestUsingClient {
         try {
             Thread.sleep(500);
         }
-        catch (Exception e) {
+        catch (Exception ignored) {
         }
     }
 
@@ -122,7 +122,7 @@ public class Stage4TestUsingClient {
         try {
             Thread.sleep(1000);
         }
-        catch (Exception e) {
+        catch (Exception ignored) {
         }
         Vote v = servers1.get(0).lookForLeader();
         servers1.forEach(server ->{
@@ -147,7 +147,7 @@ public class Stage4TestUsingClient {
         try {
             Thread.sleep(500);
         }
-        catch (Exception e) {
+        catch (Exception ignored) {
         }
         Vote v = servers1.get(0).lookForLeader();
     }

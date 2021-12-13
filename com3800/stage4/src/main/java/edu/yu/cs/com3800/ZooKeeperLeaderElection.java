@@ -6,6 +6,7 @@ import edu.yu.cs.com3800.stage4.ZooKeeperPeerServerImpl;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 
+@SuppressWarnings("ALL")
 public class ZooKeeperLeaderElection {
     /**
      * time to wait once we believe we've reached the end of leader election.

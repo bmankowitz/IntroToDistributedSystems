@@ -17,8 +17,6 @@ import java.util.logging.Logger;
 public class RoundRobinLeader extends Thread implements LoggingServer {
     //Used to generate unique IDs for every (work) request
     static final AtomicLong requestIDGenerator = new AtomicLong(0);
-    static final Map<Long, InetSocketAddress> requestIdtoAddress = new ConcurrentHashMap<>();
-    static final ConcurrentHashMap<Long, Message> requestToResults = new ConcurrentHashMap<>();
     private Logger logger;
     private final LinkedBlockingQueue<Message> incomingMessageQueue;
     int nextServer = 0;
@@ -29,17 +27,39 @@ public class RoundRobinLeader extends Thread implements LoggingServer {
     public RoundRobinLeader(ZooKeeperPeerServerImpl server, LinkedBlockingQueue<Message> incomingMessageQueue) {
         this.server = server;
         Map<Long, InetSocketAddress> peerIDtoAddress = server.getPeerIDtoAddress();
+        server.observerIds.forEach(x -> peerIDtoAddress.remove(x));
         this.incomingMessageQueue = incomingMessageQueue;
         workerServers = new ArrayList<>(peerIDtoAddress.values());
         setDaemon(true);
         setName("RoundRobinLeader-port-");
+
     }
 
     public void shutdown() {
         interrupt();
     }
-
-    @Override
+    public synchronized InetSocketAddress getTCPAddressOfNextServer(Message msg) throws IOException {
+        //todo: implement
+        if(this.logger == null){
+            this.logger = initializeLogging(RoundRobinLeader.class.getCanonicalName() + "-on-server-with-udpPort-");
+            logger.log(Level.INFO, "Logging started. Next server {0}", nextServer);
+        }
+        //probably assume that all messages have been sanitized. iterate through each node and deliver message:
+        //something like:
+        if(nextServer >= workerServers.size()) nextServer = 0;
+        logger.log(Level.INFO, "Next server {0}", nextServer);
+        if(msg.getMessageType() != Message.MessageType.WORK) throw new RuntimeException("UNEXPECTED MESSAGE TYPE");
+        if(msg.getRequestID() == -1L) {
+            msg = new Message(msg.getMessageType(), msg.getMessageContents(), msg.getSenderHost(), msg.getSenderPort(), msg.getReceiverHost(), msg.getReceiverPort(), requestIDGenerator.getAndIncrement());
+            logger.log(Level.FINE, "Processed unassigned message and created new id: {0}", msg);
+        }
+        requestIDtoAddress.put(msg.getRequestID(), new InetSocketAddress(msg.getSenderHost(), msg.getSenderPort()+2));
+        logger.log(Level.INFO, "Received message {0}. Returning value to caller:to {1}", new Object[]{msg,workerServers.get(nextServer)});
+        InetSocketAddress nextServerAddress = workerServers.get(nextServer);
+        nextServer++;
+        return new InetSocketAddress(nextServerAddress.getHostName(), nextServerAddress.getPort()+2);
+    }
+    @Override @Deprecated
     public void run() {
         while (!this.isInterrupted()) {
             try {

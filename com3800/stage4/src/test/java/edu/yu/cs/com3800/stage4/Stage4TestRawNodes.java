@@ -20,23 +20,16 @@ public class Stage4TestRawNodes {
     private HashMap<Long, InetSocketAddress> peerIDtoAddress;
     private ArrayList<ZooKeeperPeerServerImpl> servers;
     private final int myPort = 9999;
+    private TCPServer tcpGatewayServer;
     private final InetSocketAddress myAddress = new InetSocketAddress("localhost", this.myPort);
-    private LinkedBlockingQueue<Message> outgoingMessages;
     private LinkedBlockingQueue<Message> incomingMessages;
-    private UDPMessageSender sender;
-    private UDPMessageReceiver receiver;
+    private int lastLeaderPort = -1;
 
     @Before
     public void setUp() throws Exception {
-        //step 1: create sender & sending queue
-        this.outgoingMessages = new LinkedBlockingQueue<>();
-        this.incomingMessages = new LinkedBlockingQueue<>();
-        int senderPort = 8002;
-        sender = new UDPMessageSender(this.outgoingMessages, senderPort);
-        receiver = new UDPMessageReceiver(this.incomingMessages, myAddress, this.myPort, null);
-        Util.startAsDaemon(sender, "Sender thread");
-        Util.startAsDaemon(receiver, "Receiver thread");
-
+        incomingMessages = new LinkedBlockingQueue<>();
+        ZooKeeperPeerServerImpl gatewayPeerServer = new GatewayPeerServerImpl(myPort, 224, 22L, null);
+        tcpGatewayServer = new TCPServer(gatewayPeerServer, null, TCPServer.ServerType.CONNECTOR, null);
         //create IDs and addresses
         peerIDtoAddress = new HashMap<>();
         peerIDtoAddress.put(1L, new InetSocketAddress("localhost", 8010));
@@ -62,19 +55,18 @@ public class Stage4TestRawNodes {
             servers.add(server);
             new Thread(server, "Server on port " + server.getMyAddress().getPort()).start();
         }
+
         //wait for threads to start
         try {
             Thread.sleep(500);
         }
-        catch (Exception e) {
+        catch (Exception ignored) {
         }
     }
 
     @After
     public void tearDown() throws Exception {
         servers.forEach(ZooKeeperPeerServerImpl::shutdown);
-        sender.shutdown();
-        receiver.shutdown();
         peerIDtoAddress.clear();
         servers.clear();
         Thread.sleep(5000);
@@ -133,7 +125,7 @@ public class Stage4TestRawNodes {
         try {
             Thread.sleep(1000);
         }
-        catch (Exception e) {
+        catch (Exception ignored) {
         }
         Vote v = servers1.get(0).lookForLeader();
         servers1.forEach(server ->{
@@ -158,26 +150,26 @@ public class Stage4TestRawNodes {
         try {
             Thread.sleep(500);
         }
-        catch (Exception e) {
+        catch (Exception ignored) {
         }
         Vote v = servers1.get(0).lookForLeader();
     }
     @Test
-    public void electLeaderAndEvaluateSingleIncorrectCode() throws InterruptedException {
+    public void electLeaderAndEvaluateSingleIncorrectCode() throws InterruptedException, IOException {
         Vote v = servers.get(0).lookForLeader();
         //send message to leader
         sendMessage("uncompilable code", servers.get(0).getLeaderAddress().getPort());
         Assert.assertTrue(nextResponse().contains("No class name found in code"));
     }
     @Test
-    public void electLeaderAndEvaluateSingleCorrectCode() throws InterruptedException {
+    public void electLeaderAndEvaluateSingleCorrectCode() throws InterruptedException, IOException {
         Vote v = servers.get(0).lookForLeader();
         //send message to leader
         sendMessage(validClass, servers.get(0).getLeaderAddress().getPort());
         Assert.assertTrue(nextResponse().contains("Hello world!"));
     }
     @Test
-    public void electLeaderAndEvaluateMultipleCorrectCode() throws InterruptedException {
+    public void electLeaderAndEvaluateMultipleCorrectCode() throws InterruptedException, IOException {
         int iterations = 3;
         Vote v = servers.get(0).lookForLeader();
         //send message to leader
@@ -192,7 +184,7 @@ public class Stage4TestRawNodes {
         }
     }
     @Test
-    public void electLeaderAndEvaluateMultipleIncorrectCode() throws InterruptedException {
+    public void electLeaderAndEvaluateMultipleIncorrectCode() throws InterruptedException, IOException {
         int iterations = 3;
         Vote v = servers.get(0).lookForLeader();
         //send message to leader
@@ -208,7 +200,7 @@ public class Stage4TestRawNodes {
         Assert.assertEquals(0, iterations);
     }
     @Test
-    public void electLeaderAndEvaluateActualNodeCountCorrectCode() throws InterruptedException {
+    public void electLeaderAndEvaluateActualNodeCountCorrectCode() throws InterruptedException, IOException {
         int iterations = servers.size();
         Vote v = servers.get(0).lookForLeader();
         //send message to leader
@@ -216,6 +208,7 @@ public class Stage4TestRawNodes {
             sendMessage(validClass, servers.get(0).getLeaderAddress().getPort());
         }
         Thread.sleep(3500);
+        servers.forEach(ZooKeeperPeerServerImpl::shutdown);
         for(Message msg : incomingMessages){
             iterations--;
             String resp = new String(msg.getMessageContents());
@@ -224,7 +217,7 @@ public class Stage4TestRawNodes {
         Assert.assertEquals(0, iterations);
     }
     @Test
-    public void electLeaderAndEvaluateActualNodeCountIncorrectCode() throws InterruptedException {
+    public void electLeaderAndEvaluateActualNodeCountIncorrectCode() throws InterruptedException, IOException {
         int iterations = servers.size();
         Vote v = servers.get(0).lookForLeader();
         //send message to leader
@@ -241,7 +234,7 @@ public class Stage4TestRawNodes {
     }
 
     @Test
-    public void electLeaderAndEvaluateMoreThanNodeCountCorrectCode() throws InterruptedException {
+    public void electLeaderAndEvaluateMoreThanNodeCountCorrectCode() throws InterruptedException, IOException {
         int iterations = servers.size()*3;
         Vote v = servers.get(0).lookForLeader();
         //send message to leader
@@ -258,7 +251,7 @@ public class Stage4TestRawNodes {
     }
 
     @Test
-    public void electLeaderAndEvaluateMoreThanNodeCountIncorrectCode() throws InterruptedException {
+    public void electLeaderAndEvaluateMoreThanNodeCountIncorrectCode() throws InterruptedException, IOException {
         int iterations = servers.size()*3;
         Vote v = servers.get(0).lookForLeader();
         //send message to leader
@@ -276,7 +269,7 @@ public class Stage4TestRawNodes {
         Assert.assertEquals(0, iterations);
     }
     @Test
-    public void electLeaderAndSendCorrectCodeDirectlyToWorker() throws InterruptedException {
+    public void electLeaderAndSendCorrectCodeDirectlyToWorker() throws InterruptedException, IOException {
         //Per piazza (https://piazza.com/class/ksjkv7bd6th1jf?cid=114_f1)
         // A message directly to a worker node should return the result, even though in
         // future iterations it should only respond to the leader
@@ -287,7 +280,7 @@ public class Stage4TestRawNodes {
         servers.forEach(ZooKeeperPeerServerImpl::shutdown);
     }
     @Test
-    public void electLeaderAndSendIncorrectCodeDirectlyToWorker() throws InterruptedException {
+    public void electLeaderAndSendIncorrectCodeDirectlyToWorker() throws InterruptedException, IOException {
         //Per piazza (https://piazza.com/class/ksjkv7bd6th1jf?cid=114_f1)
         // A message directly to a worker node should return the result, even though in
         // future iterations it should only respond to the leader
@@ -309,9 +302,16 @@ public class Stage4TestRawNodes {
         servers.forEach(server ->
                 Assert.assertFalse(server.isAlive()));
     }
-    private void sendMessage(String code, int leaderPort) throws InterruptedException {
+    private void sendMessage(String code, int leaderPort) throws InterruptedException, IOException {
         Message msg = new Message(Message.MessageType.WORK, code.getBytes(), this.myAddress.getHostString(), this.myPort, "localhost", leaderPort);
-        this.outgoingMessages.put(msg);
+        if(lastLeaderPort != leaderPort){
+            tcpGatewayServer.connectTcpServer(new InetSocketAddress("localhost", leaderPort+2));
+            lastLeaderPort = leaderPort;
+        }
+        tcpGatewayServer.sendMessage(null, msg.getNetworkPayload());
+        byte[] response = tcpGatewayServer.receiveMessage(null);
+        incomingMessages.put(new Message(response));
+
     }
     private String nextResponse() throws InterruptedException {
         Message msg = this.incomingMessages.take();

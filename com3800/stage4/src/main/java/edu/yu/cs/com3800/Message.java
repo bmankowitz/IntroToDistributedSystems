@@ -2,6 +2,7 @@ package edu.yu.cs.com3800;
 
 import java.nio.ByteBuffer;
 
+@SuppressWarnings("ALL")
 public class Message {
     public enum MessageType {
         ELECTION, WORK, COMPLETED_WORK, GOSSIP, NEW_LEADER_GETTING_LAST_WORK;

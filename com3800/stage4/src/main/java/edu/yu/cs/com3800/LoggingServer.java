@@ -7,7 +7,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.logging.*;
 
 public interface LoggingServer {
-    public default Logger initializeLogging(String fileNamePreface, boolean disableParentHandlers) throws IOException {
+    default Logger initializeLogging(String fileNamePreface, boolean disableParentHandlers) throws IOException {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd-kk_mm");
         String folderName = "Stage4Logs_" + dtf.format(LocalDateTime.now());
         File folder = new File(folderName);

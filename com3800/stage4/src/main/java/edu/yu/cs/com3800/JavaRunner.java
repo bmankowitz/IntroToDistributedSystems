@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 /**
  * Since this class has only one instance variable (target dir) and it is never changed after the constructor, this class's code is threadsafe.
  */
+@SuppressWarnings("ALL")
 public class JavaRunner {
     /**
      * Location for compiler to write class file to.

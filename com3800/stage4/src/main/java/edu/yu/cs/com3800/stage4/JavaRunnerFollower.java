@@ -27,6 +27,13 @@ public class JavaRunnerFollower extends Thread implements LoggingServer {
         this.workQueue = workQueue;
         setName("JavaRunnerFollower-port-" + this.serverUdpPort);
     }
+    public JavaRunnerFollower(int port, LinkedBlockingQueue<Message> workQueue) {
+        setDaemon(true);
+        this.serverUdpPort = "" + port;
+        server = null;
+        this.workQueue = workQueue;
+        setName("JavaRunnerFollower-port-" + this.serverUdpPort);
+    }
 
     public void shutdown() {
         interrupt();
@@ -59,7 +66,10 @@ public class JavaRunnerFollower extends Thread implements LoggingServer {
         }
         if(logger != null) logger.log(Level.SEVERE,"Exiting JavaRunnerFollower.run()");
     }
-
+    public synchronized String processItem(final Message msg) throws IOException {
+        return processWorkItem(msg);
+    }
+    @Deprecated
     private String processWorkItem(Message workItem) throws IOException {
         logger.log(Level.INFO, "Received the following request (code to compile):{0}", new String(workItem.getMessageContents()));
         InputStream is = new ByteArrayInputStream(workItem.getMessageContents());
@@ -75,13 +85,13 @@ public class JavaRunnerFollower extends Thread implements LoggingServer {
             response.append(e.getMessage());
             response.append("\n");
             response.append(Util.getStackTrace(e));
-            logger.info("Code generated the following error(s): " +response);
+            logger.info("Code generated the following error(s): " + response);
 
             //Sending the error back to client:
             return response.toString();
         }
         //if we get here, the code compiled and gave a result:
-        logger.info("Code compiled successfully and returned: " +response);
+        logger.info("Code compiled successfully and returned: " + response);
         return response.toString();
     }
 }

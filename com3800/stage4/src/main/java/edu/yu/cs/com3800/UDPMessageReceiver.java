@@ -6,12 +6,16 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+@SuppressWarnings("ALL")
 public class UDPMessageReceiver extends Thread implements LoggingServer {
     private static final int MAXLENGTH = 4096;
     private final InetSocketAddress myAddress;
     private final int myPort;
+    @SuppressWarnings("FieldMayBeFinal")
     private LinkedBlockingQueue<Message> incomingMessages;
+    @SuppressWarnings("FieldMayBeFinal")
     private Logger logger;
+    @SuppressWarnings("FieldMayBeFinal")
     private ZooKeeperPeerServer peerServer;
 
     public UDPMessageReceiver(LinkedBlockingQueue<Message> incomingMessages, InetSocketAddress myAddress, int myPort, ZooKeeperPeerServer peerServer) throws IOException {

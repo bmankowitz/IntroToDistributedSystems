@@ -4,6 +4,7 @@ package edu.yu.cs.com3800;
  * Used to communicate votes across servers.
  * Adds information to the Vote about the server casting the vote.
  */
+@SuppressWarnings("ALL")
 public class ElectionNotification extends Vote {
     //ID of the sender
     final private long senderID;

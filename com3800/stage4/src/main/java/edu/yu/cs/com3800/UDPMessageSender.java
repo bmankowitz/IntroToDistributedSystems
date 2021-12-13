@@ -5,10 +5,10 @@ import java.net.DatagramSocket;
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+@SuppressWarnings("ALL")
 public class UDPMessageSender extends Thread implements LoggingServer {
     private LinkedBlockingQueue<Message> outgoingMessages;
     private Logger logger;
