@@ -31,7 +31,7 @@ public class RoundRobinLeader extends Thread implements LoggingServer {
         this.incomingMessageQueue = incomingMessageQueue;
         workerServers = new ArrayList<>(peerIDtoAddress.values());
         setDaemon(true);
-        setName("RoundRobinLeader-port-");
+        setName("RoundRobinLeader-port-" + server.getUdpPort());
 
     }
 
@@ -41,7 +41,7 @@ public class RoundRobinLeader extends Thread implements LoggingServer {
     public synchronized InetSocketAddress getTCPAddressOfNextServer(Message msg) throws IOException {
         //todo: implement
         if(this.logger == null){
-            this.logger = initializeLogging(RoundRobinLeader.class.getCanonicalName() + "-on-server-with-udpPort-");
+            this.logger = initializeLogging(RoundRobinLeader.class.getCanonicalName() + "-on-server-with-udpPort-"+server.getUdpPort());
             logger.log(Level.INFO, "Logging started. Next server {0}", nextServer);
         }
         //probably assume that all messages have been sanitized. iterate through each node and deliver message:
@@ -64,7 +64,7 @@ public class RoundRobinLeader extends Thread implements LoggingServer {
         while (!this.isInterrupted()) {
             try {
                 if(this.logger == null){
-                    this.logger = initializeLogging(RoundRobinLeader.class.getCanonicalName() + "-on-server-with-udpPort-");
+                    this.logger = initializeLogging(RoundRobinLeader.class.getCanonicalName() + "-on-server-with-udpPort-"+server.getUdpPort());
                     logger.log(Level.INFO, "Logging started. Next server {0}", nextServer);
                 }
                 //probably assume that all messages have been sanitized. iterate through each node and deliver message:

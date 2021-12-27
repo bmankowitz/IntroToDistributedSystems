@@ -160,6 +160,11 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
                 break;
             }
         }
+        try {
+            closeConnection(socket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         this.logger.log(Level.SEVERE,"Exiting TCPServer.run()");
         return null;
     }
