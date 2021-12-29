@@ -6,6 +6,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.net.*;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -21,9 +22,10 @@ public class Stage4TestRawNodes {
     private ArrayList<ZooKeeperPeerServerImpl> servers;
     private final int myPort = 9999;
     private TCPServer tcpGatewayServer;
+    private Socket lastSocket = null;
+    private int lastLeaderPort = -1;
     private final InetSocketAddress myAddress = new InetSocketAddress("localhost", this.myPort);
     private LinkedBlockingQueue<Message> incomingMessages;
-    private int lastLeaderPort = -1;
 
     @Before
     public void setUp() throws Exception {
@@ -304,14 +306,15 @@ public class Stage4TestRawNodes {
     }
     private void sendMessage(String code, int leaderPort) throws InterruptedException, IOException {
         Message msg = new Message(Message.MessageType.WORK, code.getBytes(), this.myAddress.getHostString(), this.myPort, "localhost", leaderPort);
-        if(lastLeaderPort != leaderPort){
-            tcpGatewayServer.connectTcpServer(new InetSocketAddress("localhost", leaderPort+2));
-            lastLeaderPort = leaderPort;
-        }
-        tcpGatewayServer.sendMessage(null, msg.getNetworkPayload());
-        byte[] response = tcpGatewayServer.receiveMessage(null);
+        //if(lastLeaderPort != leaderPort){
+            Thread.sleep(500);
+            lastSocket = tcpGatewayServer.connectTcpServer(new InetSocketAddress("localhost", leaderPort+2));
+            //lastLeaderPort = leaderPort;
+        //}
+        tcpGatewayServer.sendMessage(lastSocket, msg.getNetworkPayload());
+        byte[] response = tcpGatewayServer.receiveMessage(lastSocket);
+        tcpGatewayServer.closeConnection(lastSocket);
         incomingMessages.put(new Message(response));
-
     }
     private String nextResponse() throws InterruptedException {
         Message msg = this.incomingMessages.take();
