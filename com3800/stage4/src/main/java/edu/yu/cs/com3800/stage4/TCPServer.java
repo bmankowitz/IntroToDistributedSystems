@@ -25,6 +25,7 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
     private final ZooKeeperPeerServerImpl server;
     private Socket outerSocket;
     private Socket innerSocket;
+    private ServerSocket serverSocket;
 
     enum ServerType {CONNECTOR, SCHEDULER, WORKER}
 
@@ -59,7 +60,7 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
     public Socket startTcpServer(InetSocketAddress address) throws IOException{
 //        if(lastSocket !=null && lastSocket.getLocalPort()==address.getPort()) return lastSocket;
         logger.log(Level.INFO, "Creating new server socket on port {0}...", address.getPort());
-        ServerSocket serverSocket = new ServerSocket(address.getPort());
+        serverSocket = new ServerSocket(address.getPort());
         logger.log(Level.INFO, "Created new server socket on port {0}. Accepting....", address.getPort());
         Socket client = serverSocket.accept();
         logger.log(Level.INFO, "Accepted connection from {0} on port {1}.", new Object[]{client, address.getPort()});
@@ -127,8 +128,8 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
                     }
                     else{
                         logger.log(Level.INFO, "Existing server appears to exist: {0}. Restarting", outerSocket);
-                        closeConnection(outerSocket);
-                        outerSocket = startTcpServer(connectionAddress);
+                        //closeConnection(outerSocket);
+                        outerSocket = serverSocket.accept();
                     }
                     //get the request (ie block until a request comes in):
                     byte[] request = receiveMessage(outerSocket);
