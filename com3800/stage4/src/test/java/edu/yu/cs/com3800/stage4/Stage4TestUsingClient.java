@@ -6,12 +6,20 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
+
+import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class Stage4TestUsingClient {
 
@@ -75,6 +83,34 @@ public class Stage4TestUsingClient {
     //===============  STAGE 4 TESTS  ==================
     //==================================================
 
+
+    //================= HTTP =============
+    @Test
+    public void contentTypeIsJavaValidCode() throws IOException, InterruptedException {
+        String code = "public class Test { public Test(){} public String run(){ return \"hello world!\";}}";
+
+        int port = 9000;
+        SimpleServer myserver = null;
+        try {
+            ZooKeeperPeerServerImpl gs = servers.stream()
+                    .filter(x -> x.getPeerState() == ZooKeeperPeerServer.ServerState.OBSERVER).findFirst().get();
+            myserver = new GatewayServer(port, gs);
+            myserver.start();
+        } catch(Exception e) {
+            System.err.println(e.getMessage());
+            if (myserver != null) {
+                myserver.stop();
+            }
+        }
+
+        String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), code, "/compileandrun", "POST");
+        System.out.println("Expected response:\n 200)");
+        System.out.println("Actual response:\n "+ ret[1]);
+        System.out.println("Expected response:\n contains(\"hello world!\") ");
+        System.out.println("Actual response:\n "+ ret[1]);
+        assertEquals("200", ret[0]);
+        assertTrue(ret[1].contains("hello world!"));
+    }
     @Test
     public void sendBroadcast() {
         servers.get(0).sendBroadcast(Message.MessageType.WORK, "test".getBytes(StandardCharsets.UTF_8));
@@ -305,5 +341,43 @@ public class Stage4TestUsingClient {
     private String nextResponse() throws InterruptedException {
         Message msg = this.incomingMessages.take();
         return new String(msg.getMessageContents());
+    }
+    public String[] sendHTTPRequest(String contentType, Map<String, String> params, String body, String context,
+                                    String method) throws IOException {
+        HttpURLConnection server = null;
+        String response;
+        int responseCode;
+        try {
+            URL url = new URL("http://localhost:9000" + context);
+            server = (HttpURLConnection) url.openConnection();
+            server.setRequestProperty("Content-type", contentType);
+            server.setRequestMethod(method);
+            server.setDoOutput(true);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        byte[] data = body.getBytes(StandardCharsets.UTF_8);
+        InputStream errorInputStream = null;
+        InputStream normalInputStream = null;
+        OutputStream outputStream = null;
+        byte[] responseByte = null;
+        byte[] errorResponse = null;
+
+
+        outputStream = server.getOutputStream();
+        outputStream.write(data);
+        try {
+            normalInputStream = server.getInputStream();
+            responseByte = normalInputStream.readAllBytes();
+            response = new String(responseByte);
+            responseCode = server.getResponseCode();
+            return new String[]{String.valueOf(responseCode), response};
+        } catch (IOException e){
+            errorInputStream = server.getErrorStream();
+            errorResponse = errorInputStream.readAllBytes();
+            response = new String(errorResponse);
+            responseCode = server.getResponseCode();
+            return new String[]{String.valueOf(responseCode), response};
+        }
     }
 }

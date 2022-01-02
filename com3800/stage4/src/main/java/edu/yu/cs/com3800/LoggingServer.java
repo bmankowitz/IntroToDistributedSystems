@@ -7,6 +7,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.logging.*;
 
 public interface LoggingServer {
+    @SuppressWarnings("ResultOfMethodCallIgnored")
     default Logger initializeLogging(String fileNamePreface, boolean disableParentHandlers) throws IOException {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd-kk_mm");
         String folderName = "Stage4Logs_" + dtf.format(LocalDateTime.now());
@@ -19,7 +20,10 @@ public interface LoggingServer {
         FileHandler fileHandler = new FileHandler(folderName+"/"+fileNamePreface+ ".log", false);
         fileHandler.setFormatter(new SimpleFormatter());
         ConsoleHandler consoleHandler = new ConsoleHandler();
-        consoleHandler.setLevel(Level.FINER);
+        //----- SET DESIRED LOGGING LEVEL ----
+        consoleHandler.setLevel(Level.INFO);
+        fileHandler.setLevel(Level.FINER);
+        //------------------------------------
         log.addHandler(fileHandler);
         if(!disableParentHandlers) log.addHandler(consoleHandler);
         log.setUseParentHandlers(false);

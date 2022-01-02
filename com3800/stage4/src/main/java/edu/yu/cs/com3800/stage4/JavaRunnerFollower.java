@@ -47,21 +47,22 @@ public class JavaRunnerFollower extends Thread implements LoggingServer {
                     this.logger = initializeLogging(JavaRunnerFollower.class.getCanonicalName() + "-on-server-with-udpPort-" + this.serverUdpPort);
                 }
 
-                Message workItem = this.workQueue.poll();
-                if (workItem != null) {
-                    logger.log(Level.INFO, "Received work item: {0}", workItem);
-                    String result = processWorkItem(workItem);
-                    Message resultMessage = new Message(Message.MessageType.COMPLETED_WORK,
-                            result.getBytes(StandardCharsets.UTF_8), server.getAddress().getHostString(),
-                            server.getUdpPort(), server.getLeaderAddress().getHostString(),
-                            server.getLeaderAddress().getPort(), workItem.getRequestID());
-                    server.sendMessage(Message.MessageType.COMPLETED_WORK, resultMessage.getRequestID(),
-                            resultMessage.getMessageContents(), server.getLeaderAddress());
-                    logger.log(Level.INFO, "Processed work item: {0}", workItem);
-                }
+//                Message workItem = this.workQueue.poll();
+                Message workItem = this.workQueue.take();
+                logger.log(Level.INFO, "Received work item: {0}", workItem);
+                String result = processWorkItem(workItem);
+                Message resultMessage = new Message(Message.MessageType.COMPLETED_WORK,
+                        result.getBytes(StandardCharsets.UTF_8), server.getAddress().getHostString(),
+                        server.getUdpPort(), server.getLeaderAddress().getHostString(),
+                        server.getLeaderAddress().getPort(), workItem.getRequestID());
+                server.sendMessage(Message.MessageType.COMPLETED_WORK, resultMessage.getRequestID(),
+                        resultMessage.getMessageContents(), server.getLeaderAddress());
+                logger.log(Level.INFO, "Processed work item: {0}", workItem);
             }
             catch (IOException e) {
                 this.logger.log(Level.WARNING,"Exception trying to process workItem", e);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
         if(logger != null) logger.log(Level.SEVERE,"Exiting JavaRunnerFollower.run()");
@@ -75,7 +76,7 @@ public class JavaRunnerFollower extends Thread implements LoggingServer {
         InputStream is = new ByteArrayInputStream(workItem.getMessageContents());
         StringBuilder response;
 
-        //Now to run through the javarunner:
+        //Now to run through the JavaRunner:
         JavaRunner javaRunner = new JavaRunner();
         try {
             response = new StringBuilder(javaRunner.compileAndRun(is));

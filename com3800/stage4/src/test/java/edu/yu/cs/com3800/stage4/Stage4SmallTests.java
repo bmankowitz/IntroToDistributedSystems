@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
 
+@SuppressWarnings({"unchecked", "RedundantThrows"})
 public class Stage4SmallTests {
 
     private HashMap<Long, InetSocketAddress> peerIDtoAddress;
@@ -88,8 +89,8 @@ public class Stage4SmallTests {
         TCPServer start = new TCPServer(servers.get(0), servers.get(0).getAddress(), TCPServer.ServerType.CONNECTOR, msg);
         TCPServer connect = new TCPServer(servers.get(1), servers.get(0).getAddress(), TCPServer.ServerType.WORKER, msg);
         ExecutorService executor = Executors.newCachedThreadPool();
-        executor.submit((Callable) start);
-        executor.submit((Callable) connect);
+        executor.submit((Callable<Message>) start);
+        executor.submit((Callable<Message>) connect);
         Thread.sleep(1500);
     }
 }

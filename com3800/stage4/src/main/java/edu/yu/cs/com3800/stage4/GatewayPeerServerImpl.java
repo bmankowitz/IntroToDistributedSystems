@@ -8,7 +8,6 @@ public class GatewayPeerServerImpl extends ZooKeeperPeerServerImpl {
     public GatewayPeerServerImpl(int myPort, long peerEpoch, Long id, Map<Long, InetSocketAddress> peerIDtoAddress) {
         super(myPort, peerEpoch, id, peerIDtoAddress);
         setPeerState(ServerState.OBSERVER);
-        //now that there is a leader, begin processing requests
     }
 
 

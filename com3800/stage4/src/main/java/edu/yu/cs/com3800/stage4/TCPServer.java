@@ -44,14 +44,14 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
         if(initialMessage != null) tcpMessageQueue.put(initialMessage);
         setName(TCPServer.class.getCanonicalName() + "-on-server-with-TcpPort-" + myAddress.getPort());
         if(logger == null) logger = initializeLogging(TCPServer.class.getCanonicalName() + "-on-server-with-TcpPort-" + myAddress.getPort());
-        //todo: ensure there is only one JavaRunner/RoundRoubinScheduler per server. They should only be created here!
+        //todo: ensure there is only one JavaRunner/RoundRobinScheduler per server. They should only be created here!
         LinkedBlockingQueue<Message> messageQueue;
         if(serverType == ServerType.SCHEDULER){
             messageQueue = new LinkedBlockingQueue<>();
             scheduler = new RoundRobinLeader(server, messageQueue);
             scheduler.start();
         } else if(serverType == ServerType.WORKER){
-            //create javarunner
+            //create JavaRunnerFollower
             messageQueue = new LinkedBlockingQueue<>();
             javaRunnerFollower = new JavaRunnerFollower(server, messageQueue);
             javaRunnerFollower.start();
@@ -92,16 +92,15 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
 //        if(socket == null) socket = lastSocket;
         logger.log(Level.INFO, "shutting down socket {0}", socket);
         socket.close();
-        //todo: busywait is bad
+        //todo: busy-wait is bad
         if(socket.isClosed()) logger.log(Level.INFO, "Successfully shut down socket {0}", socket);
-    }
-    public boolean isActuallyConnected(Socket test){
-        return false;
     }
     public synchronized void submitWork(Message msg) throws InterruptedException {
         tcpMessageQueue.put(msg);
     }
     public void shutdown(){
+        if(this.javaRunnerFollower != null) javaRunnerFollower.shutdown();
+        if(this.scheduler != null) scheduler.shutdown();
         this.interrupt();
     }
 
@@ -112,7 +111,14 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
                 //Now that we have the connection, what to do?
                 if(serverType == ServerType.CONNECTOR){
                     //this "server" connects to a host, sends data, receives data, and then closes immediately
-                    outerSocket = connectTcpServer(connectionAddress);
+                    if(outerSocket == null){
+                        outerSocket = startTcpServer(connectionAddress);
+                        logger.log(Level.INFO, "Started new server on socket: {0}", outerSocket);
+                    }
+                    else{
+                        logger.log(Level.INFO, "Existing server appears to exist: {0}. Accepting", outerSocket);
+                        outerSocket = serverSocket.accept();
+                    }
                     sendMessage(outerSocket, tcpMessageQueue.take().getNetworkPayload());
                     byte[] response = receiveMessage(outerSocket);
                     //return new Message(response);
@@ -120,15 +126,14 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
                 else{
                     //I am a "client"
                     //This server should stay alive until closed by the client, at which point it should restart. This
-                    //server should ONLY shutdown if interrupted
+                    //server should ONLY shut down if interrupted
                     logger.log(Level.FINE, "Trying to start server on: {0}", connectionAddress);
                     if(outerSocket == null){
                         outerSocket = startTcpServer(connectionAddress);
                         logger.log(Level.INFO, "Started new server on socket: {0}", outerSocket);
                     }
                     else{
-                        logger.log(Level.INFO, "Existing server appears to exist: {0}. Restarting", outerSocket);
-                        //closeConnection(outerSocket);
+                        logger.log(Level.INFO, "Existing server appears to exist: {0}. Accepting", outerSocket);
                         outerSocket = serverSocket.accept();
                     }
                     //get the request (ie block until a request comes in):
@@ -149,10 +154,6 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
                         sendMessage(innerSocket, msg.getNetworkPayload());
                         Message response = new Message(receiveMessage(innerSocket));
                         this.sendMessage(outerSocket, response.getNetworkPayload());
-                        //this is the only time we want to preemptively close connection. This connection is created
-                        // between master and server, so the client cannot close it.
-                        //closeConnection(innerSocket);
-//                        return response;
                     }
                     logger.log(Level.FINE, "Received result: {0}", result);
                     Message completedWork = new Message(Message.MessageType.COMPLETED_WORK,
@@ -163,10 +164,8 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
                 }
 
             } catch (IOException e) {
-                this.logger.log(Level.WARNING,"Received IO exception in main loop.");
+                this.logger.log(Level.WARNING,"Received IO exception in main loop. Trying again...");
                 e.printStackTrace();
-//                interrupt();
-//                break;
             } catch (InterruptedException e) {
                 this.logger.log(Level.WARNING,"Received InterruptedException in main loop.");
                 interrupt();

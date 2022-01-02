@@ -34,7 +34,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     private TCPServer tcpServer;
     private UDPMessageSender senderWorker;
     private UDPMessageReceiver receiverWorker;
-    public Set<Long> observerIds = new HashSet<>();
+    public final Set<Long> observerIds = new HashSet<>();
 
 
     public ZooKeeperPeerServerImpl(int myPort, long peerEpoch, Long id, Map<Long,InetSocketAddress> peerIDtoAddress) {
@@ -49,7 +49,8 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         this.id = id;
         this.peerEpoch = peerEpoch;
         try {
-            log = initializeLogging("ZKPeer" + id, false);
+            log = initializeLogging(ZooKeeperPeerServerImpl.class.getCanonicalName() + "-on-port-"+getUdpPort(),
+                    false);
         } catch (Exception e) {e.printStackTrace();}
         state = ServerState.LOOKING;
         currentLeader = new Vote(this.id, this.peerEpoch);
@@ -77,6 +78,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
                 // if there are still no notification, abort as this is the second time iterating 2*maxNotificationInterval:
                 if(vote == null){
                     log.severe("Aborting - did not receive any messages within 2*maxNotificationInterval");
+                    //shutdown();
                     throw new RuntimeException("Unable to receive vote within 2*maxNotificationInterval");
                 }
             }
@@ -129,7 +131,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
                     //FALLTHROUGH:
                 case LEADING: //if the sender is following a leader already or thinks it is the leader
 
-                    //IF: see if the sender's vote allows me to reach a conclusion based on the election epoch that I'm in, i.e. it gives the majority to the vote of the FOLLOWING or LEADING peer whose vote I just received.
+                    //IF: if the sender's vote allows me to reach a conclusion based on the election epoch that I'm in, i.e. it gives the majority to the vote of the FOLLOWING or LEADING peer whose vote I just received.
                     //if so, accept the election winner.
                     if(haveEnoughVotes(peerIDtoVote, vote)){
                         acceptElectionWinner(vote);
@@ -165,18 +167,18 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         sendBroadcast(Message.MessageType.ELECTION, buildMsgContent(createElectionNotificationFromVote(currentLeader)));
     }
 
-    private Vote acceptElectionWinner(ElectionNotification n) throws InterruptedException {
+    private void acceptElectionWinner(ElectionNotification n) throws InterruptedException {
         //set my state to either LEADING or FOLLOWING
         //clear out the incoming queue before returning
         log.log(Level.INFO, "Elected leader {0}", n);
         setCurrentLeader(n);
         if(this.id == currentLeader.getProposedLeaderID()) setPeerState(LEADING);
+        else if(this.getPeerState() == OBSERVER){/* Do nothing - OBSERVER should never change state*/ }
         else setPeerState(FOLLOWING);
         incomingMessages.clear();
         Thread.sleep(ZooKeeperLeaderElection.finalizeWait);
         //After sleeping the requisite sleep time, start whatever threads (TCPServer) are necessary
         startWorkProcessingThreads();
-        return n;
     }
 
     /*
@@ -203,11 +205,11 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     }
 
     /**
-     * Termination predicate. Given a set of votes, determines if have sufficient support for the proposal to declare the end of the election round.
+     * Termination predicate. Given a set of votes, determines if there is sufficient support for the proposal to declare the end of the election round.
      * Who voted for who isn't relevant, we only care that each server has one current vote
      */
     protected boolean haveEnoughVotes(Map<Long, ElectionNotification> votes, Vote proposal) {
-        //FIXME TODO SOMETHIGN VERY FISHY GOING ON HERE WHERE SOMETIMES ACCEPTING WITHOUT QUORUM
+        //FIXME TODO SOMETHING VERY FISHY GOING ON HERE WHERE SOMETIMES ACCEPTING WITHOUT QUORUM
         //is the number of votes for the proposal > the size of my peer server’s quorum?
         log.log(Level.FINE, "Checking support for vote {0}", proposal);
         AtomicInteger voteCount = new AtomicInteger();
@@ -281,11 +283,11 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
             try {
                 boolean isLooking = this.getPeerState() == LOOKING;
                 boolean isObserverInitialState = this.getPeerState() == OBSERVER && this.getCurrentLeader().getProposedLeaderID() == this.id;
-                //since we don't need fault tolerance yet, just do leader search if we are LOOKING
+                //since we don't need fault-tolerance yet, just do leader search if we are LOOKING
                 //OR if we are an OBSERVER but the current leader is myself
                 if (isLooking || isObserverInitialState) lookForLeader();
 //                processMessages();
-                tcpProcessMessages();
+                //tcpProcessMessages();
                 //return;
             } catch (Exception e) {
                 e.printStackTrace();
@@ -330,7 +332,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     private void tcpProcessMessages() throws IOException, InterruptedException {
         switch(state){
             case FOLLOWING:
-                //This is a java runner. I should expect to be given a message. This should be taken care of by TCPserver
+                //This is a java runner. I should expect to be given a message. This should be taken care of by TCPServer
                 break;
             case LEADING:
                 //I am a leader. I need to insert messages. In reality, I should only receive messages from the Gateway.

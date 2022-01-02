@@ -8,7 +8,6 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
@@ -27,7 +26,7 @@ public class RoundRobinLeader extends Thread implements LoggingServer {
     public RoundRobinLeader(ZooKeeperPeerServerImpl server, LinkedBlockingQueue<Message> incomingMessageQueue) {
         this.server = server;
         Map<Long, InetSocketAddress> peerIDtoAddress = server.getPeerIDtoAddress();
-        server.observerIds.forEach(x -> peerIDtoAddress.remove(x));
+        server.observerIds.forEach(peerIDtoAddress::remove);
         this.incomingMessageQueue = incomingMessageQueue;
         workerServers = new ArrayList<>(peerIDtoAddress.values());
         setDaemon(true);
