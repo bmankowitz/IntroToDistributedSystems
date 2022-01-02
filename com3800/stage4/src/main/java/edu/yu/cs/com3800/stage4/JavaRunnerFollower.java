@@ -50,7 +50,8 @@ public class JavaRunnerFollower extends Thread implements LoggingServer {
 //                Message workItem = this.workQueue.poll();
                 Message workItem = this.workQueue.take();
                 logger.log(Level.INFO, "Received work item: {0}", workItem);
-                String result = processWorkItem(workItem);
+//                String result = processWorkItem(workItem);
+                String result = processItem(workItem);
                 Message resultMessage = new Message(Message.MessageType.COMPLETED_WORK,
                         result.getBytes(StandardCharsets.UTF_8), server.getAddress().getHostString(),
                         server.getUdpPort(), server.getLeaderAddress().getHostString(),

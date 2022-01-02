@@ -276,11 +276,19 @@ public class Stage4TestRawNodes {
         executorService.shutdown();
         executorService.awaitTermination(45000, TimeUnit.MILLISECONDS);
         long endAsync = System.currentTimeMillis();
-        long startSync = System.currentTimeMillis();
+        final long startSync = System.currentTimeMillis();
+        final long[] endSync = {0};
+        new Thread(() -> {
+            while((System.currentTimeMillis()- startSync <= 45000 && endSync[0] == 0 )){}
+            if(endSync[0] == 0) {
+                Assert.fail("Synchronous timed out");
+                servers.forEach(ZooKeeperPeerServerImpl::shutdown);
+            }
+        }).start();
         for (int i = 0; i < iterations; i++) {
             sendMessageSynchronous("validClass", servers.get(0).getLeaderAddress().getPort());
         }
-        long endSync = System.currentTimeMillis();
+        endSync[0] = System.currentTimeMillis();
         iterations *= 2;
         for(Message msg : incomingMessages){
             iterations--;
@@ -290,7 +298,7 @@ public class Stage4TestRawNodes {
         }
         Assert.assertEquals(0, iterations);
         long asyncTime = endAsync - startAsync;
-        long syncTime = endSync - startSync;
+        long syncTime = endSync[0] - startSync;
         Assert.assertTrue(asyncTime < syncTime);
         System.out.println("Async: "+asyncTime);
         System.out.println("Sync: "+syncTime);

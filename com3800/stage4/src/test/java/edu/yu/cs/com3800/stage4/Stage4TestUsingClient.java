@@ -30,6 +30,7 @@ public class Stage4TestUsingClient {
     private final InetSocketAddress myAddress = new InetSocketAddress("localhost", this.myPort);
     private LinkedBlockingQueue<Message> outgoingMessages;
     private LinkedBlockingQueue<Message> incomingMessages;
+    private ZooKeeperPeerServerImpl gs;
 
     @Before
     public void setUp() throws Exception {
@@ -37,10 +38,6 @@ public class Stage4TestUsingClient {
         this.outgoingMessages = new LinkedBlockingQueue<>();
         this.incomingMessages = new LinkedBlockingQueue<>();
         int senderPort = 8002;
-//        UDPMessageSender sender = new UDPMessageSender(this.outgoingMessages, senderPort);
-//        UDPMessageReceiver receiver = new UDPMessageReceiver(this.incomingMessages, myAddress, this.myPort, null);
-//        Util.startAsDaemon(sender, "Sender thread");
-//        Util.startAsDaemon(receiver, "Receiver thread");
 
         //create IDs and addresses
         HashMap<Long, InetSocketAddress> peerIDtoAddress = new HashMap<>(3);
@@ -67,11 +64,18 @@ public class Stage4TestUsingClient {
             servers.add(server);
             new Thread(server, "Server on port " + server.getMyAddress().getPort()).start();
         }
-        //wait for threads to start
+        //wait for threads elect leader:
+        servers.get(0).lookForLeader();
         try {
-            Thread.sleep(500);
-        }
-        catch (Exception ignored) {
+            gs = servers.stream()
+                    .filter(x -> x.getPeerState() == ZooKeeperPeerServer.ServerState.OBSERVER).findFirst().get();
+//            myserver = new GatewayServer(port, gs);
+//            myserver.start();
+        } catch(Exception e) {
+            System.err.println(e.getMessage());
+//            if (myserver != null) {
+//                myserver.stop();
+//            }
         }
     }
 
@@ -88,22 +92,7 @@ public class Stage4TestUsingClient {
     @Test
     public void contentTypeIsJavaValidCode() throws IOException, InterruptedException {
         String code = "public class Test { public Test(){} public String run(){ return \"hello world!\";}}";
-
-        int port = 9000;
-        SimpleServer myserver = null;
-        try {
-            ZooKeeperPeerServerImpl gs = servers.stream()
-                    .filter(x -> x.getPeerState() == ZooKeeperPeerServer.ServerState.OBSERVER).findFirst().get();
-            myserver = new GatewayServer(port, gs);
-            myserver.start();
-        } catch(Exception e) {
-            System.err.println(e.getMessage());
-            if (myserver != null) {
-                myserver.stop();
-            }
-        }
-
-        String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), code, "/compileandrun", "POST");
+        String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), code, "/compileandrun", "POST", gs.getUdpPort());
         System.out.println("Expected response:\n 200)");
         System.out.println("Actual response:\n "+ ret[1]);
         System.out.println("Expected response:\n contains(\"hello world!\") ");
@@ -343,12 +332,12 @@ public class Stage4TestUsingClient {
         return new String(msg.getMessageContents());
     }
     public String[] sendHTTPRequest(String contentType, Map<String, String> params, String body, String context,
-                                    String method) throws IOException {
+                                    String method, int port) throws IOException {
         HttpURLConnection server = null;
         String response;
         int responseCode;
         try {
-            URL url = new URL("http://localhost:9000" + context);
+            URL url = new URL("http://localhost:" + port + context);
             server = (HttpURLConnection) url.openConnection();
             server.setRequestProperty("Content-type", contentType);
             server.setRequestMethod(method);
