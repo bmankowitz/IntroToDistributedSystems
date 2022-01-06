@@ -12,6 +12,7 @@ public class GatewayPeerServerImpl extends ZooKeeperPeerServerImpl implements Lo
     public GatewayPeerServerImpl(int myPort, long peerEpoch, Long id, Map<Long, InetSocketAddress> peerIDtoAddress) throws IOException {
         super(myPort, peerEpoch, id, peerIDtoAddress);
         setPeerState(ServerState.OBSERVER);
+        setCurrentLeader(null);
         gs = new GatewayServer(myPort, this);
         gs.start();
         Logger log = initializeLogging(this.getClass().getCanonicalName()+"-on-port-"+myPort);

@@ -65,17 +65,12 @@ public class Stage4TestUsingClient {
             new Thread(server, "Server on port " + server.getMyAddress().getPort()).start();
         }
         //wait for threads elect leader:
-        servers.get(0).lookForLeader();
+        servers.get(1).lookForLeader();
         try {
             gs = servers.stream()
                     .filter(x -> x.getPeerState() == ZooKeeperPeerServer.ServerState.OBSERVER).findFirst().get();
-//            myserver = new GatewayServer(port, gs);
-//            myserver.start();
         } catch(Exception e) {
             System.err.println(e.getMessage());
-//            if (myserver != null) {
-//                myserver.stop();
-//            }
         }
     }
 
@@ -90,7 +85,7 @@ public class Stage4TestUsingClient {
 
     //================= HTTP =============
     @Test
-    public void contentTypeIsJavaValidCode() throws IOException, InterruptedException {
+    public void singleRequestValidCode() throws IOException, InterruptedException {
         String code = "public class Test { public Test(){} public String run(){ return \"hello world!\";}}";
         String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), code, "/compileandrun", "POST", gs.getUdpPort());
         System.out.println("Expected response:\n 200)");
@@ -100,237 +95,82 @@ public class Stage4TestUsingClient {
         assertEquals("200", ret[0]);
         assertTrue(ret[1].contains("hello world!"));
     }
-    @Test
-    public void sendBroadcast() {
-        servers.get(0).sendBroadcast(Message.MessageType.WORK, "test".getBytes(StandardCharsets.UTF_8));
-    }
-    @Test
-    public void sendMessage() {
-        servers.get(0).sendMessage(Message.MessageType.WORK, "test".getBytes(StandardCharsets.UTF_8),
-                servers.get(1).getMyAddress());
-//        servers.get(1);
-    }
-    @Test
-    public void sendElectionMessage() {
-        ElectionNotification elec = new ElectionNotification(123, ZooKeeperPeerServer.ServerState.FOLLOWING, -234, 43);
-        byte[] elecBytes = ZooKeeperPeerServerImpl.buildMsgContent(elec);
-        Message msg = new Message(Message.MessageType.ELECTION, elecBytes, "localhost", 23, "localhost", 25);
-        servers.get(0).sendMessage(Message.MessageType.ELECTION, elecBytes,
-                servers.get(1).getMyAddress());
-        Assert.assertEquals(elec, ZooKeeperPeerServerImpl.getNotificationFromMessage(msg));
-    }
-    @Test
-    public void leaderElectionSuccess() throws InterruptedException {
-        Vote v = servers.get(0).lookForLeader();
-        servers.forEach(server ->{
-                    Assert.assertEquals(2555555L, server.getCurrentLeader().getProposedLeaderID());
-                    server.shutdown();
-                });
-    }
-    @Test
-    public void lowerEpochIsUpdated() throws InterruptedException {
-        HashMap<Long, InetSocketAddress> peerIDtoAddress1 = new HashMap<>(3);
-        peerIDtoAddress1.put(1L, new InetSocketAddress("localhost", 8110));
-        peerIDtoAddress1.put(2L, new InetSocketAddress("localhost", 8120));
-        peerIDtoAddress1.put(3L, new InetSocketAddress("localhost", 8130));
-        ArrayList<ZooKeeperPeerServerImpl> servers1 = new ArrayList<>();
 
-        //create servers
-        for (long i = 1L; i <= peerIDtoAddress1.size(); i++) {
-            ZooKeeperPeerServerImpl server = new ZooKeeperPeerServerImpl(peerIDtoAddress1.get(i).getPort(), 22 + i,
-                    i, peerIDtoAddress1);
-            servers1.add(server);
-            new Thread(server, "Server on port " + server.getMyAddress().getPort()).start();
-        }
+    @Test
+    public void singleRequestIncorrectCode() throws InterruptedException, IOException {
+        String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), "uncompilable code", "/compileandrun", "POST", gs.getUdpPort());
+        System.out.println("Expected response:\n 200)");
+        System.out.println("Actual response:\n "+ ret[1]);
+        System.out.println("Expected response:\n contains(\"No class name found in code\") ");
+        System.out.println("Actual response:\n "+ ret[1]);
+        assertEquals("200", ret[0]);
+        assertTrue(ret[1].contains("No class name found in code"));
+    }
 
-        //wait for threads to start
-        try {
-            Thread.sleep(1000);
-        }
-        catch (Exception ignored) {
-        }
-        Vote v = servers1.get(0).lookForLeader();
-        servers1.forEach(server ->{
-                Assert.assertEquals(3L, server.getCurrentLeader().getProposedLeaderID());
-                Assert.assertEquals(25, server.getPeerEpoch());
-        });
-    }
-    @Test(expected = RuntimeException.class)
-    public void singleServerTimesOut() throws InterruptedException {
-        HashMap<Long, InetSocketAddress> peerIDtoAddress1 = new HashMap<>(3);
-        peerIDtoAddress1.put(1L, new InetSocketAddress("localhost", 8110));
-        ArrayList<ZooKeeperPeerServerImpl> servers1 = new ArrayList<>();
-        ZooKeeperLeaderElection.maxNotificationInterval = 30;
-        //create servers
-        for (long i = 1L; i <= peerIDtoAddress1.size(); i++) {
-            ZooKeeperPeerServerImpl server = new ZooKeeperPeerServerImpl(peerIDtoAddress1.get(i).getPort(), 22 + i,
-                    i, peerIDtoAddress1);
-            servers1.add(server);
-            new Thread(server, "Server on port " + server.getMyAddress().getPort()).start();
-        }
-        //wait for threads to start
-        try {
-            Thread.sleep(500);
-        }
-        catch (Exception ignored) {
-        }
-        Vote v = servers1.get(0).lookForLeader();
-    }
     @Test
-    public void electLeaderAndEvaluateSingleIncorrectCode() throws InterruptedException {
-        Vote v = servers.get(0).lookForLeader();
-        //send message to leader
-        sendMessage("uncompilable code", servers.get(0).getLeaderAddress().getPort());
-        Assert.assertTrue(nextResponse().contains("No class name found in code"));
-    }
-    @Test
-    public void electLeaderAndEvaluateSingleCorrectCode() throws InterruptedException {
-        Vote v = servers.get(0).lookForLeader();
-        //send message to leader
-        sendMessage(validClass, servers.get(0).getLeaderAddress().getPort());
-        Assert.assertTrue(nextResponse().contains("Hello world!"));
-    }
-    @Test
-    public void electLeaderAndEvaluateMultipleCorrectCode() throws InterruptedException {
+    public void electLeaderAndEvaluateMultipleCorrectCode() throws InterruptedException, IOException {
         int iterations = 3;
-        Vote v = servers.get(0).lookForLeader();
         //send message to leader
         for (int i = 0; i < iterations; i++) {
-            sendMessage(validClass, servers.get(0).getLeaderAddress().getPort());
-        }
-        Thread.sleep(1500);
-        for(Message msg : incomingMessages){
-            iterations--;
-            String resp = new String(msg.getMessageContents());
-            Assert.assertTrue(resp.contains("Hello world!"));
+            String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), validClass, "/compileandrun", "POST", gs.getUdpPort());
+            assertEquals("200", ret[0]);
+            assertTrue(ret[1].contains("Hello world!"));
         }
     }
     @Test
-    public void electLeaderAndEvaluateMultipleIncorrectCode() throws InterruptedException {
+    public void electLeaderAndEvaluateMultipleIncorrectCode() throws InterruptedException, IOException {
         int iterations = 3;
-        Vote v = servers.get(0).lookForLeader();
         //send message to leader
         for (int i = 0; i < iterations; i++) {
-            sendMessage("validClass", servers.get(0).getLeaderAddress().getPort());
+            String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), "validClass", "/compileandrun", "POST", gs.getUdpPort());
+            assertEquals("200", ret[0]);
+            assertTrue(ret[1].contains("No class name found in code"));
         }
-        Thread.sleep(1500);
-        for(Message msg : incomingMessages){
-            iterations--;
-            String resp = new String(msg.getMessageContents());
-            Assert.assertTrue(resp.contains("No class name found in code"));
-        }
-        Assert.assertEquals(0, iterations);
     }
     @Test
-    public void electLeaderAndEvaluateActualNodeCountCorrectCode() throws InterruptedException {
+    public void electLeaderAndEvaluateActualNodeCountCorrectCode() throws InterruptedException, IOException {
         int iterations = servers.size();
-        Vote v = servers.get(0).lookForLeader();
-        //send message to leader
         for (int i = 0; i < iterations; i++) {
-            sendMessage(validClass, servers.get(0).getLeaderAddress().getPort());
+            String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), validClass, "/compileandrun", "POST", gs.getUdpPort());
+            assertEquals("200", ret[0]);
+            assertTrue(ret[1].contains("Hello world!"));
         }
-        Thread.sleep(3500);
-        for(Message msg : incomingMessages){
-            iterations--;
-            String resp = new String(msg.getMessageContents());
-            Assert.assertTrue(resp.contains("Hello world!"));
-        }
-        Assert.assertEquals(0, iterations);
     }
     @Test
-    public void electLeaderAndEvaluateActualNodeCountIncorrectCode() throws InterruptedException {
+    public void electLeaderAndEvaluateActualNodeCountIncorrectCode() throws InterruptedException, IOException {
         int iterations = servers.size();
-        Vote v = servers.get(0).lookForLeader();
-        //send message to leader
         for (int i = 0; i < iterations; i++) {
-            sendMessage("validClass", servers.get(0).getLeaderAddress().getPort());
+            String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), "validClass", "/compileandrun", "POST", gs.getUdpPort());
+            assertEquals("200", ret[0]);
+            assertTrue(ret[1].contains("No class name found in code"));
         }
-        Thread.sleep(1500);
-        for(Message msg : incomingMessages){
-            iterations--;
-            String resp = new String(msg.getMessageContents());
-            Assert.assertTrue(resp.contains("No class name found in code"));
-        }
-        Assert.assertEquals(0, iterations);
     }
 
     @Test
-    public void electLeaderAndEvaluateMoreThanNodeCountCorrectCode() throws InterruptedException {
+    public void electLeaderAndEvaluateMoreThanNodeCountCorrectCode() throws InterruptedException, IOException {
         int iterations = servers.size()*3;
-        Vote v = servers.get(0).lookForLeader();
-        //send message to leader
         for (int i = 0; i < iterations; i++) {
-            sendMessage("validClass", servers.get(0).getLeaderAddress().getPort());
+            String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), validClass, "/compileandrun", "POST", gs.getUdpPort());
+            assertEquals("200", ret[0]);
+            assertTrue(ret[1].contains("Hello world!"));
         }
-        Thread.sleep(1500);
-        for(Message msg : incomingMessages){
-            iterations--;
-            String resp = new String(msg.getMessageContents());
-            Assert.assertTrue(resp.contains("No class name found in code"));
-        }
-        Assert.assertEquals(0, iterations);
     }
 
     @Test
-    public void electLeaderAndEvaluateMoreThanNodeCountIncorrectCode() throws InterruptedException {
+    public void electLeaderAndEvaluateMoreThanNodeCountIncorrectCode() throws InterruptedException, IOException {
         int iterations = servers.size()*3;
-        Vote v = servers.get(0).lookForLeader();
-        //send message to leader
         for (int i = 0; i < iterations; i++) {
-            sendMessage("validClass", servers.get(0).getLeaderAddress().getPort());
+            String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), "validClass", "/compileandrun", "POST", gs.getUdpPort());
+            assertEquals("200", ret[0]);
+            assertTrue(ret[1].contains("No class name found in code"));
         }
-        //wait for processing to complete. Note that the requests are asynchronous and nonblocking, but it takes time
-        //to evaluate all of them
-        Thread.sleep(1500);
-        for(Message msg : incomingMessages){
-            iterations--;
-            String resp = new String(msg.getMessageContents());
-            Assert.assertTrue(resp.contains("No class name found in code"));
-        }
-        Assert.assertEquals(0, iterations);
     }
-    @Test
-    public void electLeaderAndSendCorrectCodeDirectlyToWorker() throws InterruptedException {
-        //Per piazza (https://piazza.com/class/ksjkv7bd6th1jf?cid=114_f1)
-        // A message directly to a worker node should return the result, even though in
-        // future iterations it should only respond to the leader
-        Vote v = servers.get(0).lookForLeader();
-        //send message to random server
-        sendMessage(validClass, servers.get(4).getUdpPort());
-        Assert.assertTrue(nextResponse().contains("Hello world!"));
-        servers.forEach(ZooKeeperPeerServerImpl::shutdown);
-    }
-    @Test
-    public void electLeaderAndSendIncorrectCodeDirectlyToWorker() throws InterruptedException {
-        //Per piazza (https://piazza.com/class/ksjkv7bd6th1jf?cid=114_f1)
-        // A message directly to a worker node should return the result, even though in
-        // future iterations it should only respond to the leader
-        Vote v = servers.get(0).lookForLeader();
-        //send message to random server
-        sendMessage("validClass", servers.get(4).getUdpPort());
-        Assert.assertTrue(nextResponse().contains("No class name found in code"));
-        servers.forEach(ZooKeeperPeerServerImpl::shutdown);
-    }
-    @Test
-    public void electLeaderAndShutdownKillsAllThreads() throws InterruptedException {
-        //Per piazza (https://piazza.com/class/ksjkv7bd6th1jf?cid=114_f1)
-        // A message directly to a worker node should return the result, even though in
-        // future iterations it should only respond to the leader
-        Vote v = servers.get(0).lookForLeader();
-        //send message to leader
-        servers.forEach(ZooKeeperPeerServerImpl::shutdown);
-        Thread.sleep(400);
-        servers.forEach(server ->
-                Assert.assertFalse(server.isAlive()));
-    }
-    private void sendMessage(String code, int leaderPort) throws InterruptedException {
-        Message msg = new Message(Message.MessageType.WORK, code.getBytes(), this.myAddress.getHostString(), this.myPort, "localhost", leaderPort);
-        this.outgoingMessages.put(msg);
-    }
-    private String nextResponse() throws InterruptedException {
-        Message msg = this.incomingMessages.take();
-        return new String(msg.getMessageContents());
-    }
+
+
+
+
+
+
     public String[] sendHTTPRequest(String contentType, Map<String, String> params, String body, String context,
                                     String method, int port) throws IOException {
         HttpURLConnection server = null;

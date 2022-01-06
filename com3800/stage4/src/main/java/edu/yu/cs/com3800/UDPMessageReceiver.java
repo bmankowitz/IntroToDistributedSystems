@@ -6,16 +6,12 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-@SuppressWarnings("ALL")
 public class UDPMessageReceiver extends Thread implements LoggingServer {
     private static final int MAXLENGTH = 4096;
     private final InetSocketAddress myAddress;
     private final int myPort;
-    @SuppressWarnings("FieldMayBeFinal")
     private LinkedBlockingQueue<Message> incomingMessages;
-    @SuppressWarnings("FieldMayBeFinal")
     private Logger logger;
-    @SuppressWarnings("FieldMayBeFinal")
     private ZooKeeperPeerServer peerServer;
 
     public UDPMessageReceiver(LinkedBlockingQueue<Message> incomingMessages, InetSocketAddress myAddress, int myPort, ZooKeeperPeerServer peerServer) throws IOException {
@@ -67,7 +63,7 @@ public class UDPMessageReceiver extends Thread implements LoggingServer {
                         byte[] msgContent = ZooKeeperLeaderElection.buildMsgContent(notification);
                         sendElectionReply(msgContent, sender);
                     }
-                //end stage 5 logic
+                    //end stage 5 logic
                 }else if(!this.strayElectionMessage(received)){
                     //use interrupt-safe version, i.e. offer
                     boolean done = false;
@@ -114,7 +110,8 @@ public class UDPMessageReceiver extends Thread implements LoggingServer {
             return false;
         }
         ElectionNotification receivedNotification = ZooKeeperLeaderElection.getNotificationFromMessage(received);
-        if (receivedNotification.getState() == ZooKeeperPeerServer.ServerState.LOOKING && (this.peerServer.getPeerState() == ZooKeeperPeerServer.ServerState.FOLLOWING || this.peerServer.getPeerState() == ZooKeeperPeerServer.ServerState.LEADING)) {
+        ZooKeeperPeerServer.ServerState receivedState = receivedNotification.getState();
+        if ((receivedState == ZooKeeperPeerServer.ServerState.LOOKING || receivedState == ZooKeeperPeerServer.ServerState.OBSERVER) && (this.peerServer.getPeerState() == ZooKeeperPeerServer.ServerState.FOLLOWING || this.peerServer.getPeerState() == ZooKeeperPeerServer.ServerState.LEADING)) {
             return true;
         }
         else {
@@ -132,7 +129,7 @@ public class UDPMessageReceiver extends Thread implements LoggingServer {
             return false;
         }
         ElectionNotification receivedNotification = ZooKeeperLeaderElection.getNotificationFromMessage(received);
-        if (receivedNotification.getState() != ZooKeeperPeerServer.ServerState.LOOKING && this.peerServer.getPeerState() != ZooKeeperPeerServer.ServerState.LOOKING) {
+        if (receivedNotification.getState() != ZooKeeperPeerServer.ServerState.LOOKING && this.peerServer.getCurrentLeader() != null) {
             return true;
         }
         else {

@@ -17,7 +17,7 @@ public class ZooKeeperLeaderElection {
      * Upper bound on the amount of time between two consecutive notification checks.
      * This impacts the amount of time to get the system up again after long partitions. Currently 60 seconds.
      */
-    public static int maxNotificationInterval = 60000;
+    public static int maxNotificationInterval = 10000;
     private final LinkedBlockingQueue<Message> incomingMessages;
     private final ZooKeeperPeerServer myPeerServer;
     private long proposedLeader;

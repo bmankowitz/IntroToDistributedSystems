@@ -154,7 +154,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
                     }
                     break;
                 case OBSERVER:
-                    log.log(Level.INFO, "Received vote from observer. Discarding: {0}", vote);
+                    log.log(Level.WARNING, "Received vote from observer. Discarding: {0}", vote);
                     break;
             }
         }
@@ -164,7 +164,15 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     private void sendNotifications() {
         log.log(Level.FINE, "Sending initial EN notifications from port {0}",this.getUdpPort());
         //send our initial vote to peers. They will reply with their own vote:
-        sendBroadcast(Message.MessageType.ELECTION, buildMsgContent(createElectionNotificationFromVote(currentLeader)));
+        //if this is an observer, send an invalid vote:
+        if(getPeerState() == OBSERVER){
+            log.log(Level.INFO, "OBSERVER sending invalid vote. Should be (-1,-1)");
+            sendBroadcast(Message.MessageType.ELECTION,
+                    buildMsgContent(createElectionNotificationFromVote(new Vote(-1, -1))));
+        }
+        else {
+            sendBroadcast(Message.MessageType.ELECTION, buildMsgContent(createElectionNotificationFromVote(currentLeader)));
+        }
     }
 
     private void acceptElectionWinner(ElectionNotification n) throws InterruptedException {
@@ -189,10 +197,11 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
      * // TODO: generalize this to include any vote for an observer
      */
     protected boolean supersedesCurrentVote(long newId, long newEpoch) {
-        final boolean newEpochIsHigher = newEpoch > this.currentLeader.getPeerEpoch();
-        final boolean serverIdIsHigher = newId > this.currentLeader.getProposedLeaderID();
+        if(currentLeader == null) return true;
+        final boolean newEpochIsHigher = newEpoch > getCurrentLeader().getPeerEpoch();
+        final boolean serverIdIsHigher = newId > getCurrentLeader().getProposedLeaderID();
         final boolean iAmObserverVotingForSelf =
-                (this.getPeerState() == OBSERVER) && (this.getCurrentLeader().getProposedLeaderID() == this.id);
+                (this.getPeerState() == OBSERVER) && (getCurrentLeader().getProposedLeaderID() == this.id);
         final boolean supersedesCurrentVote = newEpochIsHigher || (newEpoch == this.getPeerEpoch() && serverIdIsHigher)
                 || iAmObserverVotingForSelf;
         log.log(Level.FINER, "newID: {0}, newEpoch: {1}, currentLeader: {2}", new Object[]{newId, newEpoch, currentLeader});
@@ -201,6 +210,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         return supersedesCurrentVote;
     }
     protected ElectionNotification createElectionNotificationFromVote(Vote vote) {
+        if(vote == null) return null;
         return new ElectionNotification(vote.getProposedLeaderID(), this.state, this.id, vote.getPeerEpoch());
     }
 
@@ -209,11 +219,10 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
      * Who voted for who isn't relevant, we only care that each server has one current vote
      */
     protected boolean haveEnoughVotes(Map<Long, ElectionNotification> votes, Vote proposal) {
-        //FIXME TODO SOMETHING VERY FISHY GOING ON HERE WHERE SOMETIMES ACCEPTING WITHOUT QUORUM
-        //is the number of votes for the proposal > the size of my peer server’s quorum?
         log.log(Level.FINE, "Checking support for vote {0}", proposal);
         AtomicInteger voteCount = new AtomicInteger();
         votes.forEach((voterId,electionNotification) -> {
+            if(electionNotification == null) return;
             if(electionNotification.getProposedLeaderID() == proposal.getProposedLeaderID()
                     && electionNotification.getPeerEpoch() == proposal.getPeerEpoch())
                 voteCount.getAndIncrement();
@@ -235,7 +244,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         return new ElectionNotification(leader, ServerState.getServerState(stateChar), senderID, peerEpoch);
     }
 
-    public static byte[] buildMsgContent(ElectionNotification notification) {
+    public static synchronized byte[] buildMsgContent(ElectionNotification notification) {
         /*
         *   Order from Message.java:
         *
@@ -282,7 +291,8 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         while(!this.isInterrupted()) {
             try {
                 boolean isLooking = this.getPeerState() == LOOKING;
-                boolean isObserverInitialState = this.getPeerState() == OBSERVER && this.getCurrentLeader().getProposedLeaderID() == this.id;
+                boolean isObserverInitialState = this.getPeerState() == OBSERVER
+                        && (this.getCurrentLeader() == null ||this.getCurrentLeader().getProposedLeaderID() == this.id);
                 //since we don't need fault-tolerance yet, just do leader search if we are LOOKING
                 //OR if we are an OBSERVER but the current leader is myself
                 if (isLooking || isObserverInitialState) lookForLeader();
@@ -290,7 +300,8 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
                 //tcpProcessMessages();
                 //return;
             } catch (Exception e) {
-                e.printStackTrace();
+                log.severe(Util.getStackTrace(e));
+                shutdown();
                 return;
             }
         }
@@ -354,7 +365,8 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         return getAddress();
     }
     public InetSocketAddress getLeaderAddress(){
-        return peerIDtoAddress.get(currentLeader.getProposedLeaderID());
+        if(getCurrentLeader() == null) return null;
+        return peerIDtoAddress.get(getCurrentLeader().getProposedLeaderID());
     }
 
 
@@ -371,8 +383,11 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     @Override
     public void setCurrentLeader(Vote v) {
         log.log(Level.FINE, "Changing leader from {0} to {1}",new Object[]{currentLeader, v});
-        currentLeader = new Vote(v.getProposedLeaderID(), v.getPeerEpoch());
-        this.peerEpoch = v.getPeerEpoch();
+        if(v == null) currentLeader = null;
+        else{
+            currentLeader = new Vote(v.getProposedLeaderID(), v.getPeerEpoch());
+            this.peerEpoch = v.getPeerEpoch();
+        }
         peerIDtoVote.put(this.id, createElectionNotificationFromVote(v));
     }
 
@@ -396,7 +411,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     }
 
     @Override
-    public void sendBroadcast(Message.MessageType type, byte[] messageContents) {
+    public synchronized void sendBroadcast(Message.MessageType type, byte[] messageContents) {
         for(InetSocketAddress peer : peerIDtoAddress.values()) {
             //no need to send messages to myself
             if(peer.equals(myAddress)) continue;
@@ -452,6 +467,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     public int getQuorumSize() {
         final AtomicInteger observerCount = new AtomicInteger();
         peerIDtoVote.values().forEach(x -> {
+            if(x == null) return;
             if(x.getState() == OBSERVER){
                 observerCount.getAndIncrement();
                 observerIds.add(x.getSenderID());

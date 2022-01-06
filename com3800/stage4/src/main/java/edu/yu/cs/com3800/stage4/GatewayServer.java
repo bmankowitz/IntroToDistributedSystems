@@ -8,6 +8,7 @@ import edu.yu.cs.com3800.Message;
 import edu.yu.cs.com3800.SimpleServer;
 import edu.yu.cs.com3800.LoggingServer;
 import edu.yu.cs.com3800.stage4.ZooKeeperPeerServerImpl;
+import edu.yu.cs.com3800.ZooKeeperLeaderElection;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -16,6 +17,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.logging.*;
+import java.util.*;
 
 public class GatewayServer implements SimpleServer, LoggingServer{
     static ZooKeeperPeerServerImpl gateway;
@@ -23,6 +25,7 @@ public class GatewayServer implements SimpleServer, LoggingServer{
     static Logger log;
     static FileHandler fileHandler;
     static ConsoleHandler consoleHandler;
+    static Queue<String> queuedRequests = new LinkedList<>();
     //todo: properly implement logging
     //todo: ensure this can process multiple requests simultaneously
     //todo: send requests via the gateway server stuff.
@@ -51,10 +54,14 @@ public class GatewayServer implements SimpleServer, LoggingServer{
                 String requestString = new String(request);
                 log.info("Received the following request (code to compile):" + requestString);
 
+                //valid request. Enqueue
+                queuedRequests.add(requestString);
                 //Now to run through the leader:
                 try {
+                    //repurposing variable. TODO: be less clumsy
+                    requestString = waitUntilLeaderReadyAndGetRequest();
                     int leaderPort = gateway.getLeaderAddress().getPort();
-                    Message msg = new Message(sendMessageSynchronous(new String(request), leaderPort, gateway));
+                    Message msg = new Message(sendMessageSynchronous(requestString, leaderPort, gateway));
                     response = new StringBuilder(new String(msg.getMessageContents()));
                 } catch (Exception e) {
                     //There was some sort of exception. Need to create stack trace:
@@ -79,6 +86,18 @@ public class GatewayServer implements SimpleServer, LoggingServer{
             OutputStream os = httpExchange.getResponseBody();
             os.write(response.toString().getBytes());
             os.close();
+        }
+        private static String waitUntilLeaderReadyAndGetRequest(){
+            while(gateway.getLeaderAddress() == null){
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                log.log(Level.WARNING, "The leader is not available or does not exist. Waiting up to {0}ms",
+                        ZooKeeperLeaderElection.maxNotificationInterval);
+            }
+            return queuedRequests.poll();
         }
         private byte[] sendMessageSynchronous(String code, int leaderPort, ZooKeeperPeerServerImpl gatewayServer)
                 throws InterruptedException, IOException {

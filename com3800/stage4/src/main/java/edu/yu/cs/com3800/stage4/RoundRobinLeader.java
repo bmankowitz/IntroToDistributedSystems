@@ -53,12 +53,12 @@ public class RoundRobinLeader extends Thread implements LoggingServer {
             logger.log(Level.FINE, "Processed unassigned message and created new id: {0}", msg);
         }
         requestIDtoAddress.put(msg.getRequestID(), new InetSocketAddress(msg.getSenderHost(), msg.getSenderPort()+2));
-        logger.log(Level.INFO, "Received message {0}. Returning value to caller:to {1}", new Object[]{msg,workerServers.get(nextServer)});
+        logger.log(Level.INFO, "Forwarding message {0} to {1}", new Object[]{msg,workerServers.get(nextServer)});
         InetSocketAddress nextServerAddress = workerServers.get(nextServer);
         nextServer++;
         return new InetSocketAddress(nextServerAddress.getHostName(), nextServerAddress.getPort()+2);
     }
-    @Override @Deprecated
+    @Override
     public void run() {
         while (!this.isInterrupted()) {
             try {
