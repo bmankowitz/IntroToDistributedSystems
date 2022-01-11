@@ -6,7 +6,6 @@ import com.sun.net.httpserver.HttpServer;
 import edu.yu.cs.com3800.LoggingServer;
 import edu.yu.cs.com3800.Message;
 import edu.yu.cs.com3800.SimpleServer;
-import edu.yu.cs.com3800.ZooKeeperLeaderElection;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,17 +13,16 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.LinkedList;
-import java.util.Queue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class GatewayServer implements SimpleServer, LoggingServer{
     static ZooKeeperPeerServerImpl gateway;
-    static final Queue<String> queuedRequests = new LinkedList<>();
+    static final LinkedList<String> queuedRequests = new LinkedList<>();
     static Logger log;
     HttpServer server;
 
-    static class JavaRunnerHandler implements HttpHandler {
+    public static class JavaRunnerHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange httpExchange) throws IOException {
             StringBuilder response;
@@ -50,28 +48,18 @@ public class GatewayServer implements SimpleServer, LoggingServer{
                 //valid request. Enqueue
                 queuedRequests.add(requestString);
                 //Now to run through the leader:
-                try {
-                    String nextRequest = waitUntilLeaderReadyAndGetRequest();
-                    int leaderPort = gateway.getLeaderAddress().getPort();
-                    Message msg = new Message(sendMessage(nextRequest, leaderPort, gateway));
-                    response = new StringBuilder(new String(msg.getMessageContents()));
-                } catch (Exception e) {
-                    //There was some sort of exception. Need to create stack trace:
-                    response = new StringBuilder();
-                    response.append(e.getMessage());
-                    response.append("\n");
-                    response.append(edu.yu.cs.com3800.Util.getStackTrace(e));
-                    log.warning("ResponseCode: 400. Code generated the following error(s): " +response);
-
-                    //Sending the error back to client:
-                    httpExchange.sendResponseHeaders(400, response.length());
-                    OutputStream os = httpExchange.getResponseBody();
-                    os.write(response.toString().getBytes());
-                    os.close();
-                    return;
-                }
+                response = sendNextRequestAndFormat(httpExchange);
+                if (response == null) return;
                 //if we get here, the code compiled and gave a result:
-                log.info("ResponseCode: 200. Code compiled successfully and returned: ");
+                log.info("ResponseCode: 200. Code compiled successfully and returned.");
+                //double check that the leader is still alive:
+                if(gateway.isPeerDead(gateway.getLeaderAddress())){
+                    //todo check this
+                    log.log(Level.WARNING, "Leader is marked failed. Discarding response and starting again.");
+                    queuedRequests.addFirst(requestString);
+                    response = sendNextRequestAndFormat(httpExchange);
+                    if(response == null) return;
+                }
                 httpExchange.sendResponseHeaders(200, response.length());
             }
             //Sending back the result
@@ -79,6 +67,32 @@ public class GatewayServer implements SimpleServer, LoggingServer{
             os.write(response.toString().getBytes());
             os.close();
         }
+
+        private StringBuilder sendNextRequestAndFormat(HttpExchange httpExchange) throws IOException {
+            StringBuilder response;
+            try {
+                String nextRequest = waitUntilLeaderReadyAndGetRequest();
+                int leaderPort = gateway.getLeaderAddress().getPort();
+                Message msg = new Message(sendMessage(nextRequest, leaderPort, gateway));
+                response = new StringBuilder(new String(msg.getMessageContents()));
+            } catch (Exception e) {
+                //There was some sort of exception. Need to create stack trace:
+                response = new StringBuilder();
+                response.append(e.getMessage());
+                response.append("\n");
+                response.append(edu.yu.cs.com3800.Util.getStackTrace(e));
+                log.warning("ResponseCode: 400. Code generated the following error(s): " +response);
+
+                //Sending the error back to client:
+                httpExchange.sendResponseHeaders(400, response.length());
+                OutputStream os = httpExchange.getResponseBody();
+                os.write(response.toString().getBytes());
+                os.close();
+                return null;
+            }
+            return response;
+        }
+
         private static String waitUntilLeaderReadyAndGetRequest(){
             while(gateway.getLeaderAddress() == null){
                 try {
@@ -86,8 +100,7 @@ public class GatewayServer implements SimpleServer, LoggingServer{
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                log.log(Level.WARNING, "The leader is not available or does not exist. Waiting up to {0}ms",
-                        ZooKeeperLeaderElection.maxNotificationInterval);
+                log.log(Level.WARNING, "The leader is not available or does not exist. Waiting ...");
             }
             return queuedRequests.poll();
         }

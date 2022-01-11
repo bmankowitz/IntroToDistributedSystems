@@ -18,6 +18,11 @@ public class GatewayPeerServerImpl extends ZooKeeperPeerServerImpl implements Lo
         Logger log = initializeLogging(this.getClass().getCanonicalName()+"-on-port-"+myPort);
         log.info("started GatewayServer");
     }
+    @Override
+    public void shutdown(){
+        gs.stop();
+        super.shutdown();
+    }
 
 
 }

@@ -48,6 +48,10 @@ public class RoundRobinLeader extends Thread implements LoggingServer {
         //probably assume that all messages have been sanitized. iterate through each node and deliver message:
         //something like:
         if(nextServer >= workerServers.size()) nextServer = 0;
+        while(server.isPeerDead(workerServers.get(nextServer))){
+            logger.log(Level.INFO, "Attempted to send work to failed server {0}. Skipping...", nextServer);
+            nextServer++;
+        }
         logger.log(Level.INFO, "Next server {0}", nextServer);
         if(msg.getMessageType() != Message.MessageType.WORK) throw new RuntimeException("UNEXPECTED MESSAGE TYPE");
         if(msg.getRequestID() == -1L) {

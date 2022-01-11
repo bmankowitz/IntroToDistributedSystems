@@ -20,7 +20,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class Stage4TestUsingClient {
+public class Stage5HttpClientTest {
 
     private final String validClass = "package edu.yu.cs.fall2019.com3800.stage1;\n\npublic class HelloWorld\n{\n    public String run()\n    {\n        return \"Hello world!\";\n    }\n}\n";
     private HashMap<Long, InetSocketAddress> peerIDtoAddress;
@@ -76,9 +76,6 @@ public class Stage4TestUsingClient {
     public void tearDown() {
         servers.forEach(ZooKeeperPeerServerImpl::shutdown);
     }
-    //==================================================
-    //===============  STAGE 4 TESTS  ==================
-    //==================================================
 
 
     //================= HTTP =============
@@ -86,8 +83,8 @@ public class Stage4TestUsingClient {
     public void singleRequestValidCode() throws IOException {
         String code = "public class Test { public Test(){} public String run(){ return \"hello world!\";}}";
         String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), code, "/compileandrun", "POST", gs.getUdpPort());
-        System.out.println("Expected response:\n 200)");
-        System.out.println("Actual response:\n "+ ret[1]);
+        System.out.println("Expected response:\n 200");
+        System.out.println("Actual response:\n "+ ret[0]);
         System.out.println("Expected response:\n contains(\"hello world!\") ");
         System.out.println("Actual response:\n "+ ret[1]);
         assertEquals("200", ret[0]);
@@ -97,8 +94,8 @@ public class Stage4TestUsingClient {
     @Test
     public void singleRequestIncorrectCode() throws IOException {
         String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), "uncompilable code", "/compileandrun", "POST", gs.getUdpPort());
-        System.out.println("Expected response:\n 200)");
-        System.out.println("Actual response:\n "+ ret[1]);
+        System.out.println("Expected response:\n 200");
+        System.out.println("Actual response:\n "+ ret[0]);
         System.out.println("Expected response:\n contains(\"No class name found in code\") ");
         System.out.println("Actual response:\n "+ ret[1]);
         assertEquals("200", ret[0]);

@@ -60,6 +60,10 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
         logger.log(Level.INFO, "Created new server socket on port {0}. Accepting....", address.getPort());
         Socket client = serverSocket.accept();
         logger.log(Level.INFO, "Accepted connection from {0} on port {1}.", new Object[]{client, address.getPort()});
+        // ---- GOSSIP STUFF -----
+        InetSocketAddress socketAddress = new InetSocketAddress(client.getLocalAddress().getHostName(), client.getLocalPort());
+        server.updateLocalGossipCounter(socketAddress);
+        // ---- GOSSIP STUFF -----
         return client;
     }
 
@@ -67,6 +71,10 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
         logger.log(Level.INFO, "Connecting to TCPServer on port {0}....", address.getPort());
         Socket client = new Socket(address.getHostString(), address.getPort());
         logger.log(Level.INFO, "Connected to TCPServer on port {0}", address.getPort());
+        // ---- GOSSIP STUFF -----
+        InetSocketAddress socketAddress = new InetSocketAddress(client.getLocalAddress().getHostName(), client.getLocalPort());
+        server.updateLocalGossipCounter(socketAddress);
+        // ---- GOSSIP STUFF -----
         return client;
     }
     public void sendMessage(Socket socket, byte[] data) throws IOException {
@@ -78,6 +86,10 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
         final byte[] received = Util.readAllBytesFromNetwork(socket.getInputStream());
         logger.log(Level.FINE, "Received message from {0}: {1}..\n Parsed as Message: {2}",
                 new Object[]{socket, received, new Message(received)});
+        // ---- GOSSIP STUFF -----
+        InetSocketAddress socketAddress = new InetSocketAddress(socket.getLocalAddress().getHostName(), socket.getLocalPort());
+        server.updateLocalGossipCounter(socketAddress);
+        // ---- GOSSIP STUFF -----
         return received;
     }
     public void closeConnection(Socket socket) throws IOException {

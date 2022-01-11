@@ -1,5 +1,7 @@
 package edu.yu.cs.com3800;
 
+import edu.yu.cs.com3800.stage5.ZooKeeperPeerServerImpl;
+
 import java.io.IOException;
 import java.net.*;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -54,6 +56,15 @@ public class UDPMessageReceiver extends Thread implements LoggingServer {
                     continue;
                 }
                 this.logger.fine("UDP packet received:\n" + received);
+                //-------- GOSSIP STUFF ---------
+                ((ZooKeeperPeerServerImpl) peerServer).updateLocalGossipCounter(sender);
+                //STAGE 5: update server state:
+                if(received.getMessageType() == Message.MessageType.ELECTION){
+                    ElectionNotification electionNotification = ZooKeeperPeerServerImpl.getNotificationFromMessage(received);
+                    long serverId = ((ZooKeeperPeerServerImpl) peerServer).getPeerIdByAddress(sender);
+                    ((ZooKeeperPeerServerImpl) peerServer).peerIDtoStatus.put(serverId, electionNotification.getState());
+                }
+                //-------- GOSSIP STUFF ---------
                 //this is logic required for stage 5...
                 if (sendLeader(received)) {
                     Vote leader = this.peerServer.getCurrentLeader();

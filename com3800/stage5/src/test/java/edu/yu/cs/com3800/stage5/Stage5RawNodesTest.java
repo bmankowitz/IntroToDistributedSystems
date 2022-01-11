@@ -18,15 +18,13 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.Map.Entry;
 
-public class Stage4TestRawNodes {
+public class Stage5RawNodesTest {
 
     private final String validClass = "package edu.yu.cs.fall2019.com3800.stage1;\n\npublic class HelloWorld\n{\n    public String run()\n    {\n        return \"Hello world!\";\n    }\n}\n";
     private HashMap<Long, InetSocketAddress> peerIDtoAddress;
     private ArrayList<ZooKeeperPeerServerImpl> servers;
     private final int myPort = 9999;
     private TCPServer tcpGatewayServer;
-//    private Socket lastSocket = null;
-    private final int lastLeaderPort = -1;
     private final InetSocketAddress myAddress = new InetSocketAddress("localhost", this.myPort);
     private LinkedBlockingQueue<Message> incomingMessages;
     private final ExecutorService executorService = Executors.newFixedThreadPool(8);
@@ -79,9 +77,6 @@ public class Stage4TestRawNodes {
         Thread.sleep(5000);
 
     }
-    //==================================================
-    //===============  STAGE 4 TESTS  ==================
-    //==================================================
 
     @Test
     public void sendBroadcast() {
@@ -351,6 +346,9 @@ public class Stage4TestRawNodes {
                 //}
                 tcpGatewayServer.sendMessage(lastSocket, msg.getNetworkPayload());
                 byte[] response = tcpGatewayServer.receiveMessage(lastSocket);
+                if(response == null){
+                    Assert.fail("Should not be null");
+                }
                 tcpGatewayServer.closeConnection(lastSocket);
                 incomingMessages.put(new Message(response));
             } catch(InterruptedException | IOException e){
