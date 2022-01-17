@@ -12,13 +12,16 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.LinkedList;
+import java.util.HashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class GatewayServer implements SimpleServer, LoggingServer{
     static ZooKeeperPeerServerImpl gateway;
-    static final LinkedList<String> queuedRequests = new LinkedList<>();
+    static final HashMap<Long, String> requestsToSend = new HashMap<>(); //requestId -> requestString
+    static final HashMap<Long, String> incompleteRequests = new HashMap<>(); //requestId -> requestString
     static Logger log;
     HttpServer server;
 
@@ -26,6 +29,7 @@ public class GatewayServer implements SimpleServer, LoggingServer{
         @Override
         public void handle(HttpExchange httpExchange) throws IOException {
             StringBuilder response;
+            Message responseMessage = null;
             log.info("Visitor to context: /compileandrun using " + httpExchange.getRequestMethod());
             if(httpExchange.getRequestHeaders().get("Content-type") == null ||
                     !httpExchange.getRequestHeaders().get("Content-type").get(0).equals("text/x-java-source")){
@@ -36,8 +40,7 @@ public class GatewayServer implements SimpleServer, LoggingServer{
                 httpExchange.sendResponseHeaders(400, 0);
             }
             else {
-                //This means the headers are now valid. Need to create a new InputStream to pass to the JavaRunner.
-                //Can't use the same one otherwise it might get clobbered.
+                //This means the headers are now valid. Need to get the actual request
                 InputStream is = httpExchange.getRequestBody();
                 byte[] request = is.readAllBytes();
                 is.close();
@@ -46,55 +49,40 @@ public class GatewayServer implements SimpleServer, LoggingServer{
                 log.info("Received the following request (code to compile):" + requestString);
 
                 //valid request. Enqueue
-                queuedRequests.add(requestString);
+                long requestId = RoundRobinLeader.requestIDGenerator.getAndIncrement();
+                incompleteRequests.put(requestId, requestString);
+                requestsToSend.put(requestId, requestString);
+                log.log(Level.INFO, "added new request {0}. incompleteRequests: {1}, requestsToSend: {2}",
+                        new Object[]{requestId, incompleteRequests, requestsToSend});
                 //Now to run through the leader:
-                response = sendNextRequestAndFormat(httpExchange);
-                if (response == null) return;
+                responseMessage = sendNextRequestAndFormat(httpExchange);
                 //if we get here, the code compiled and gave a result:
                 log.info("ResponseCode: 200. Code compiled successfully and returned.");
                 //double check that the leader is still alive:
-                if(gateway.isPeerDead(gateway.getLeaderAddress())){
+                while(gateway.isPeerDead(gateway.getLeaderAddress())){
                     //todo check this
                     log.log(Level.WARNING, "Leader is marked failed. Discarding response and starting again.");
-                    queuedRequests.addFirst(requestString);
-                    response = sendNextRequestAndFormat(httpExchange);
-                    if(response == null) return;
+                    responseMessage = sendNextRequestAndFormat(httpExchange);
+                    //if(response == null) return;
                 }
+                response = new StringBuilder(new String(responseMessage.getMessageContents()));
                 httpExchange.sendResponseHeaders(200, response.length());
             }
+            //if we got this far, the request has been completed:
+            incompleteRequests.remove(responseMessage.getRequestID());
             //Sending back the result
             OutputStream os = httpExchange.getResponseBody();
             os.write(response.toString().getBytes());
             os.close();
         }
 
-        private StringBuilder sendNextRequestAndFormat(HttpExchange httpExchange) throws IOException {
-            StringBuilder response;
-            try {
-                String nextRequest = waitUntilLeaderReadyAndGetRequest();
-                int leaderPort = gateway.getLeaderAddress().getPort();
-                Message msg = new Message(sendMessage(nextRequest, leaderPort, gateway));
-                response = new StringBuilder(new String(msg.getMessageContents()));
-            } catch (Exception e) {
-                //There was some sort of exception. Need to create stack trace:
-                response = new StringBuilder();
-                response.append(e.getMessage());
-                response.append("\n");
-                response.append(edu.yu.cs.com3800.Util.getStackTrace(e));
-                log.warning("ResponseCode: 400. Code generated the following error(s): " +response);
-
-                //Sending the error back to client:
-                httpExchange.sendResponseHeaders(400, response.length());
-                OutputStream os = httpExchange.getResponseBody();
-                os.write(response.toString().getBytes());
-                os.close();
-                return null;
-            }
-            return response;
+        private Message sendNextRequestAndFormat(HttpExchange httpExchange) throws IOException {
+            byte[] result = waitUntilLeaderReadyAndSendRequest();
+            return new Message(result);
         }
 
-        private static String waitUntilLeaderReadyAndGetRequest(){
-            while(gateway.getLeaderAddress() == null){
+        private static byte[] waitUntilLeaderReadyAndSendRequest() {
+            while (gateway.getLeaderAddress() == null) {
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException e) {
@@ -102,26 +90,42 @@ public class GatewayServer implements SimpleServer, LoggingServer{
                 }
                 log.log(Level.WARNING, "The leader is not available or does not exist. Waiting ...");
             }
-            return queuedRequests.poll();
+            byte[] returnValue = null;
+            while (returnValue == null) {
+                //now that the leader is back online (or never left), enqueue the messages that were sent to the old leader and lost.
+                incompleteRequests.forEach(requestsToSend::putIfAbsent);
+                //sending the first request
+                Long minID = requestsToSend.keySet().stream().min(Long::compareTo).get();
+                String minIdRequest = requestsToSend.remove(minID);
+                log.log(Level.INFO, "Leader is available. Sending out request {0}. incompleteRequests: {1}, requestsToSend: {2}",
+                        new Object[]{minID, incompleteRequests, requestsToSend});
+
+                int leaderPort = gateway.getLeaderAddress().getPort();
+                returnValue = sendMessage(minID, minIdRequest, leaderPort, gateway);
+            }
+            return returnValue;
         }
-        private byte[] sendMessage(String code, int leaderPort, ZooKeeperPeerServerImpl gatewayServer) {
+        private static byte[] sendMessage(Long requestID, String code, int leaderPort, ZooKeeperPeerServerImpl gatewayServer) {
             try {
                 Message msg = new Message(Message.MessageType.WORK, code.getBytes(),
                         gatewayServer.getAddress().getHostString(),
-                        gatewayServer.getAddress().getPort(), "localhost", leaderPort);
-                //if(lastLeaderPort != leaderPort){
+                        gatewayServer.getAddress().getPort(), "localhost", leaderPort, requestID);
                 Thread.sleep(500);
+                byte[] response = null;
                 Socket lastSocket;
+
                 InetSocketAddress connectionAddress = new InetSocketAddress("localhost", leaderPort + 2);
                 TCPServer tcpGatewayServer = new TCPServer(gatewayServer, connectionAddress, TCPServer.ServerType.CONNECTOR, null);
                 lastSocket = tcpGatewayServer.connectTcpServer(connectionAddress);
                 tcpGatewayServer.sendMessage(lastSocket, msg.getNetworkPayload());
-                byte[] response = tcpGatewayServer.receiveMessage(lastSocket);
+                response = tcpGatewayServer.receiveMessage(lastSocket);
                 tcpGatewayServer.closeConnection(lastSocket);
+
                 return response;
             } catch(InterruptedException | IOException e){
                 log.warning(edu.yu.cs.com3800.Util.getStackTrace(e));
-                throw new RuntimeException(e);
+                //returning null as a sentinel value that something went wrong. This is checked by the caller
+                return null;
             }
         }
     }
@@ -130,7 +134,8 @@ public class GatewayServer implements SimpleServer, LoggingServer{
     public GatewayServer(int port, ZooKeeperPeerServerImpl gatewayPeer) throws IOException {
         server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/compileandrun", new JavaRunnerHandler());
-        server.setExecutor(null);
+        Executor executor = Executors.newFixedThreadPool(4);
+        server.setExecutor(executor);
         GatewayServer.gateway = gatewayPeer;
         log = gateway.initializeLogging(this.getClass().getCanonicalName());
         log.info("Created gateway server on port " +port);
@@ -152,6 +157,7 @@ public class GatewayServer implements SimpleServer, LoggingServer{
     public void stop() {
         log.info("Stopping server");
         server.stop(0);
+
         log.info("Server stopped");
     }
 

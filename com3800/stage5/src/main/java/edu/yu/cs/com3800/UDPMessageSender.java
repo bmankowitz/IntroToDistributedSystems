@@ -32,7 +32,7 @@ public class UDPMessageSender extends Thread implements LoggingServer {
                 if(this.logger == null){
                     this.logger = initializeLogging(UDPMessageSender.class.getCanonicalName() + "-on-server-with-udpPort-" + this.serverUdpPort);
                 }
-                Message messageToSend = this.outgoingMessages.poll();
+                Message messageToSend = this.outgoingMessages.take();
                 if (messageToSend != null) {
                     DatagramSocket socket = new DatagramSocket();
                     byte[] payload = messageToSend.getNetworkPayload();
@@ -44,6 +44,8 @@ public class UDPMessageSender extends Thread implements LoggingServer {
             }
             catch (IOException e) {
                 this.logger.log(Level.WARNING,"failed to send packet", e);
+            } catch (InterruptedException e) {
+                this.logger.log(Level.SEVERE,"UDPMessageSender was interrupted");
             }
         }
         this.logger.log(Level.SEVERE,"Exiting UDPMessageSender.run()");

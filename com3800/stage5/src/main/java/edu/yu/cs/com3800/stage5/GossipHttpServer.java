@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import edu.yu.cs.com3800.LoggingServer;
 import edu.yu.cs.com3800.SimpleServer;
+import edu.yu.cs.com3800.Util;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,8 +23,7 @@ public class GossipHttpServer implements SimpleServer, LoggingServer {
         public void handle(HttpExchange httpExchange) throws IOException {
             String response;
             log.info("Visitor to context: /getgossipinfo using " + httpExchange.getRequestMethod());
-            //This means the headers are now valid. Need to create a new InputStream to pass to the JavaRunner.
-            //Can't use the same one otherwise it might get clobbered.
+
             InputStream is = httpExchange.getRequestBody();
             byte[] request = is.readAllBytes();
             String requestString = new String(request);
@@ -43,8 +43,7 @@ public class GossipHttpServer implements SimpleServer, LoggingServer {
         public void handle(HttpExchange httpExchange) throws IOException {
             String response;
             log.info("Visitor to context: /getserverstatus using " + httpExchange.getRequestMethod());
-            //This means the headers are now valid. Need to create a new InputStream to pass to the JavaRunner.
-            //Can't use the same one otherwise it might get clobbered.
+
             InputStream is = httpExchange.getRequestBody();
             byte[] request = is.readAllBytes();
             String requestString = new String(request);
@@ -60,11 +59,15 @@ public class GossipHttpServer implements SimpleServer, LoggingServer {
         }
     }
 
-    public GossipHttpServer(ZooKeeperPeerServerImpl hostPeerServer) throws IOException {
+    public GossipHttpServer(ZooKeeperPeerServerImpl hostPeerServer) {
         //add 1 to udp port to get http port
         this.hostPeerServer = hostPeerServer;
-        log = initializeLogging(this.getClass().getCanonicalName() + "-on-port-" + hostPeerServer.getUdpPort() + 1);
-        server = HttpServer.create(new InetSocketAddress(hostPeerServer.getUdpPort()+1), 0);
+        try {
+            log = initializeLogging(this.getClass().getCanonicalName() + "-on-port-" + hostPeerServer.getUdpPort() + 1);
+            server = HttpServer.create(new InetSocketAddress(hostPeerServer.getUdpPort() + 1), 0);
+        } catch (IOException e){
+            log.severe(Util.getStackTrace(e));
+        }
         server.createContext("/getgossipinfo", new GossipArchiveHttpHandler());
         server.createContext("/getserverstatus", new CurrentServerStatusHttpHandler());
         server.setExecutor(null);

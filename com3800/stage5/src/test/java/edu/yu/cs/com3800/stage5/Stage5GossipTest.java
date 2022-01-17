@@ -24,7 +24,7 @@ import static junit.framework.TestCase.assertEquals;
 
 public class Stage5GossipTest {
 
-    private final String validClass = "package edu.yu.cs.fall2019.com3800.stage1;\n\npublic class HelloWorld\n{\n    public String run()\n    {\n        return \"Hello world!\";\n    }\n}\n";
+    private final String validClass = "package edu.yu.cs.fall2019.com3800.stage1;public class HelloWorld{public String run(){return \"Hello world!\";    }}";
     private HashMap<Long, InetSocketAddress> peerIDtoAddress;
     private ArrayList<ZooKeeperPeerServerImpl> servers;
     private final int myPort = 9999;
@@ -82,7 +82,7 @@ public class Stage5GossipTest {
     @Test
     public void gossipTimerIsUpdated() throws IOException, InterruptedException {
         long firstHeartbeat = servers.get(0).gossipHeartbeat.get();
-        Thread.sleep(1500);
+        Thread.sleep(GossipServer.GOSSIP_TIME + GossipServer.GOSSIP_TIME/2L);
         long secondHeartbeat = servers.get(0).gossipHeartbeat.get();
         Assert.assertTrue(secondHeartbeat > firstHeartbeat);
     }
@@ -90,7 +90,7 @@ public class Stage5GossipTest {
     public void nodesDoNotArbitrarilyDie() throws IOException, InterruptedException {
         ConcurrentHashMap<Long, GossipArchive.GossipLine> startingGossip, endingGossip;
         startingGossip = new ConcurrentHashMap<>(servers.get(0).gossipTable);
-        Thread.sleep(15000);
+        Thread.sleep(500000);
         endingGossip = servers.get(0).gossipTable;
         Assert.assertEquals(startingGossip.keySet(), endingGossip.keySet());
         startingGossip.forEach((id, gossipLine) ->{
@@ -106,7 +106,7 @@ public class Stage5GossipTest {
         ZooKeeperPeerServerImpl serverToShutdown = servers.remove(0);
         long idToShutdown = serverToShutdown.getServerId();
         serverToShutdown.shutdown();
-        Thread.sleep(ZooKeeperPeerServerImpl.GOSSIP_FAILURE_CLEANUP_TIME * 2);
+        Thread.sleep(GossipServer.GOSSIP_FAILURE_CLEANUP_TIME * 2L);
         servers.forEach(zooKeeperPeerServer -> {
             //should be null because failed nodes are removed after GOSSIP_FAILURE_CLEANUP_TIME
             Assert.assertNull(zooKeeperPeerServer.gossipTable.get(idToShutdown));
@@ -119,33 +119,23 @@ public class Stage5GossipTest {
         ZooKeeperPeerServerImpl serverToShutdown = servers.remove(0);
         long idToShutdown = serverToShutdown.getServerId();
         serverToShutdown.shutdown();
-        Thread.sleep(ZooKeeperPeerServerImpl.GOSSIP_FAIL_TIME + ZooKeeperPeerServerImpl.GOSSIP_TIME);
+        Thread.sleep(GossipServer.GOSSIP_FAIL_TIME + 3L * GossipServer.GOSSIP_TIME);
         servers.forEach(zooKeeperPeerServer -> {
             Assert.assertNotNull(zooKeeperPeerServer.gossipTable.get(idToShutdown));
             Assert.assertTrue(zooKeeperPeerServer.isPeerDead(idToShutdown));
             Assert.assertTrue(zooKeeperPeerServer.gossipTable.get(idToShutdown).isFailed());
         });
-        Thread.sleep(ZooKeeperPeerServerImpl.GOSSIP_FAILURE_CLEANUP_TIME + ZooKeeperPeerServerImpl.GOSSIP_TIME);
+        Thread.sleep(GossipServer.GOSSIP_FAILURE_CLEANUP_TIME + 3L* GossipServer.GOSSIP_TIME);
         servers.forEach(zooKeeperPeerServer -> {
             Assert.assertNull(zooKeeperPeerServer.gossipTable.get(idToShutdown));
             Assert.assertTrue(zooKeeperPeerServer.isPeerDead(idToShutdown));
         });
     }
-    @Test
-    @Deprecated(forRemoval = true)
-    public void gossipHttpTestSimple() throws IOException, InterruptedException {
-        ZooKeeperPeerServerImpl zs = servers.get(0);
-        new GossipHttpServer(zs).start();
-        Thread.sleep(7000);
-        servers.get(6).shutdown();
-        Thread.sleep(23000);
-    }
 
     @Test
     public void gossipHttpTest() throws IOException, InterruptedException {
         ZooKeeperPeerServerImpl zs = servers.get(0);
-        new GossipHttpServer(zs).start();
-        Thread.sleep(ZooKeeperPeerServerImpl.GOSSIP_TIME*10);
+        Thread.sleep(GossipServer.GOSSIP_TIME* 10L);
         String[] response = sendHTTPRequest("", new HashMap<>(), "", "/getgossipinfo", "GET", zs.getUdpPort()+1);
         Assert.assertEquals("200", response[0]);
         servers.forEach(server ->{
@@ -158,15 +148,13 @@ public class Stage5GossipTest {
     @Test
     public void clusterWorksAfterDeadWorkerCleanedUp() throws InterruptedException, IOException {
         //TODO: test all HTTP endpoints (getgossipinfo, getserverstatus)
-        ZooKeeperPeerServerImpl serverToShutdown = servers.remove(6);
+        ZooKeeperPeerServerImpl serverToShutdown = servers.remove(0);
         long idToShutdown = serverToShutdown.getServerId();
         serverToShutdown.shutdown();
-        Thread.sleep(ZooKeeperPeerServerImpl.GOSSIP_FAILURE_CLEANUP_TIME * 2 + ZooKeeperPeerServerImpl.GOSSIP_TIME);
-        servers.forEach(zooKeeperPeerServer -> {
-            Assert.assertNull(zooKeeperPeerServer.gossipTable.get(idToShutdown));
-        });
-        int iterations = servers.size()*2;
+        Thread.sleep(GossipServer.GOSSIP_FAILURE_CLEANUP_TIME * 2L + GossipServer.GOSSIP_TIME);
+        int iterations = servers.size() + 2;
         for (int i = 0; i < iterations; i++) {
+            System.out.println("Iteration: " + i);
             String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), validClass, "/compileandrun", "POST", gs.getUdpPort());
             assertEquals("200", ret[0]);
             assertEquals("Hello world!", ret[1]);
@@ -175,14 +163,11 @@ public class Stage5GossipTest {
 
     @Test
     public void clusterWorksAfterDeadWorkerMarkedNotYetCleaned() throws InterruptedException, IOException {
-        ZooKeeperPeerServerImpl serverToShutdown = servers.remove(6);
+        ZooKeeperPeerServerImpl serverToShutdown = servers.remove(0);
         long idToShutdown = serverToShutdown.getServerId();
         serverToShutdown.shutdown();
-        Thread.sleep(ZooKeeperPeerServerImpl.GOSSIP_FAIL_TIME * 2 + ZooKeeperPeerServerImpl.GOSSIP_TIME);
-        servers.forEach(zooKeeperPeerServer -> {
-            Assert.assertTrue(zooKeeperPeerServer.isPeerDead(idToShutdown));
-        });
-        int iterations = servers.size()*2;
+        Thread.sleep(GossipServer.GOSSIP_FAIL_TIME * 2L + GossipServer.GOSSIP_TIME);
+        int iterations = servers.size() + 2;
         for (int i = 0; i < iterations; i++) {
             String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), validClass, "/compileandrun", "POST", gs.getUdpPort());
             assertEquals("200", ret[0]);
@@ -191,11 +176,102 @@ public class Stage5GossipTest {
     }
     @Test
     public void clusterWorksAfterWorkerDeadNotYetMarked() throws InterruptedException, IOException {
-        ZooKeeperPeerServerImpl.GOSSIP_TIME = 350;
+        //ZooKeeperPeerServerImpl.GOSSIP_TIME = 350;
         ZooKeeperPeerServerImpl serverToShutdown = servers.remove(0);
         long idToShutdown = serverToShutdown.getServerId();
         serverToShutdown.shutdown();
-        int iterations = 2;
+        int iterations = servers.size() + 2;
+        for (int i = 0; i < iterations; i++) {
+            String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), validClass, "/compileandrun", "POST", gs.getUdpPort());
+            assertEquals("200", ret[0]);
+            assertEquals("Hello world!", ret[1]);
+        }
+    }
+    @Test
+    public void clusterWorksAfterTwoDeadWorkersCleanedUp() throws InterruptedException, IOException {
+        //TODO: test all HTTP endpoints (getgossipinfo, getserverstatus)
+        ArrayList<ZooKeeperPeerServerImpl> serversToShutDown = new ArrayList<>();
+        //these are both workers
+        serversToShutDown.add(servers.remove(0));
+        serversToShutDown.add(servers.remove(5));
+        serversToShutDown.forEach(ZooKeeperPeerServerImpl::shutdown);
+        Thread.sleep(GossipServer.GOSSIP_FAILURE_CLEANUP_TIME * 2L + GossipServer.GOSSIP_TIME);
+        int iterations = servers.size() + 4;
+        for (int i = 0; i < iterations; i++) {
+            System.out.println("Iteration: " + i);
+            String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), validClass, "/compileandrun", "POST", gs.getUdpPort());
+            assertEquals("200", ret[0]);
+            assertEquals("Hello world!", ret[1]);
+        }
+    }
+
+    @Test
+    public void clusterWorksAfterTwoDeadWorkerMarkedNotYetCleaned() throws InterruptedException, IOException {
+        ArrayList<ZooKeeperPeerServerImpl> serversToShutDown = new ArrayList<>();
+        //these are both workers
+        serversToShutDown.add(servers.remove(0));
+        serversToShutDown.add(servers.remove(5));
+        serversToShutDown.forEach(ZooKeeperPeerServerImpl::shutdown);
+        Thread.sleep(GossipServer.GOSSIP_FAIL_TIME * 2L + GossipServer.GOSSIP_TIME);
+        int iterations = servers.size() + 4;
+        for (int i = 0; i < iterations; i++) {
+            System.out.println("Iteration: " + i);
+            String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), validClass, "/compileandrun", "POST", gs.getUdpPort());
+            assertEquals("200", ret[0]);
+            assertEquals("Hello world!", ret[1]);
+        }
+    }
+    @Test
+    public void clusterWorksAfterTwoWorkersDeadNotYetMarked() throws InterruptedException, IOException {
+        ArrayList<ZooKeeperPeerServerImpl> serversToShutDown = new ArrayList<>();
+        //these are both workers
+        serversToShutDown.add(servers.remove(0));
+        serversToShutDown.add(servers.remove(5));
+        serversToShutDown.forEach(ZooKeeperPeerServerImpl::shutdown);
+        int iterations = servers.size() + 4;
+        for (int i = 0; i < iterations; i++) {
+            System.out.println("Iteration: " + i);
+            String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), validClass, "/compileandrun", "POST", gs.getUdpPort());
+            assertEquals("200", ret[0]);
+            assertEquals("Hello world!", ret[1]);
+        }
+    }
+    @Test
+    public void clusterWorksAfterDeadLeaderCleanedUp() throws InterruptedException, IOException {
+        //TODO: test all HTTP endpoints (getgossipinfo, getserverstatus)
+        ZooKeeperPeerServerImpl serverToShutdown = servers.remove(3);
+        long idToShutdown = serverToShutdown.getServerId();
+        serverToShutdown.shutdown();
+        Thread.sleep(GossipServer.GOSSIP_FAILURE_CLEANUP_TIME * 2L + GossipServer.GOSSIP_TIME);
+        int iterations = servers.size() + 2;
+        for (int i = 0; i < iterations; i++) {
+            System.out.println("Iteration: " + i);
+            String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), validClass, "/compileandrun", "POST", gs.getUdpPort());
+            assertEquals("200", ret[0]);
+            assertEquals("Hello world!", ret[1]);
+        }
+    }
+
+    @Test
+    public void clusterWorksAfterDeadLeaderMarkedNotYetCleaned() throws InterruptedException, IOException {
+        ZooKeeperPeerServerImpl serverToShutdown = servers.remove(3);
+        long idToShutdown = serverToShutdown.getServerId();
+        serverToShutdown.shutdown();
+        Thread.sleep(GossipServer.GOSSIP_FAIL_TIME * 2L + GossipServer.GOSSIP_TIME);
+        int iterations = servers.size() + 2;
+        for (int i = 0; i < iterations; i++) {
+            String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), validClass, "/compileandrun", "POST", gs.getUdpPort());
+            assertEquals("200", ret[0]);
+            assertEquals("Hello world!", ret[1]);
+        }
+    }
+    @Test
+    public void clusterWorksAfterLeaderDeadNotYetMarked() throws InterruptedException, IOException {
+        //ZooKeeperPeerServerImpl.GOSSIP_TIME = 350;
+        ZooKeeperPeerServerImpl serverToShutdown = servers.remove(3);
+        long idToShutdown = serverToShutdown.getServerId();
+        serverToShutdown.shutdown();
+        int iterations = servers.size() + 2;
         for (int i = 0; i < iterations; i++) {
             String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), validClass, "/compileandrun", "POST", gs.getUdpPort());
             assertEquals("200", ret[0]);

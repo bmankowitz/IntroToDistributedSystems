@@ -12,7 +12,6 @@ public class Util {
         try {
             while (in.available() == 0) {
                 try {
-                    //todo: reduce timeout
                     Thread.currentThread().sleep(500);
                 }
                 catch (InterruptedException e) {

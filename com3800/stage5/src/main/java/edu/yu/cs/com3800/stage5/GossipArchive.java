@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class GossipArchive {
     //------------- GOSSIP STUFF --------------------
-    public class Pair{
+    public static class Pair{
         public final long id;
         public final long heartbeat;
         public Pair(long id, long heartbeat){
@@ -105,8 +105,7 @@ public class GossipArchive {
         ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
         objectOutputStream.writeObject(map);
         objectOutputStream.flush();
-        byte[] bytes = outputStream.toByteArray();
-        return bytes;
+        return outputStream.toByteArray();
     }
 
 

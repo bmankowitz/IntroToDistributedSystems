@@ -61,7 +61,11 @@ public class UDPMessageReceiver extends Thread implements LoggingServer {
                 //STAGE 5: update server state:
                 if(received.getMessageType() == Message.MessageType.ELECTION){
                     ElectionNotification electionNotification = ZooKeeperPeerServerImpl.getNotificationFromMessage(received);
-                    long serverId = ((ZooKeeperPeerServerImpl) peerServer).getPeerIdByAddress(sender);
+                    Long serverId = ((ZooKeeperPeerServerImpl) peerServer).getPeerIdByAddress(sender);
+                    if(serverId == null || serverId == -1L){
+                        //((ZooKeeperPeerServerImpl) peerServer).shutdown();
+                        //throw new RuntimeException("SHOULD NOT BE NULL!!!");
+                    }
                     ((ZooKeeperPeerServerImpl) peerServer).peerIDtoStatus.put(serverId, electionNotification.getState());
                 }
                 //-------- GOSSIP STUFF ---------

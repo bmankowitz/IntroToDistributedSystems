@@ -5,6 +5,7 @@ import edu.yu.cs.com3800.Message;
 import edu.yu.cs.com3800.Util;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Callable;
@@ -24,6 +25,7 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
     private Socket outerSocket;
     private Socket innerSocket;
     private ServerSocket serverSocket;
+    private boolean shutdown = false;
 
     enum ServerType {CONNECTOR, SCHEDULER, WORKER}
 
@@ -71,19 +73,30 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
         logger.log(Level.INFO, "Connecting to TCPServer on port {0}....", address.getPort());
         Socket client = new Socket(address.getHostString(), address.getPort());
         logger.log(Level.INFO, "Connected to TCPServer on port {0}", address.getPort());
-        // ---- GOSSIP STUFF -----
-        InetSocketAddress socketAddress = new InetSocketAddress(client.getLocalAddress().getHostName(), client.getLocalPort());
-        server.updateLocalGossipCounter(socketAddress);
-        // ---- GOSSIP STUFF -----
+//        // ---- GOSSIP STUFF -----
+//        InetSocketAddress socketAddress = new InetSocketAddress(client.getLocalAddress().getHostName(), client.getLocalPort());
+//        server.updateLocalGossipCounter(socketAddress);
+//        // ---- GOSSIP STUFF -----
         return client;
     }
-    public void sendMessage(Socket socket, byte[] data) throws IOException {
+    public boolean sendMessage(Socket socket, byte[] data) throws IOException {
         logger.log(Level.FINE, "Sending message to {0}: {1}.", new Object[]{socket, data, new Message(data)});
-        socket.getOutputStream().write(data);
-        logger.log(Level.FINE, "Sent message to {0}: {1}.", new Object[]{socket, data, new Message(data)});
+        try {
+            socket.getOutputStream().write(data);
+            logger.log(Level.FINE, "Sent message to {0}: {1}.", new Object[]{socket, data, new Message(data)});
+            return true;
+        }catch (SocketException e){
+            logger.log(Level.WARNING, "SocketException {0} failed to send to {1}: {2}.", new Object[]{e, socket, data, new Message(data)});
+            return false;
+        }
     }
     public byte[] receiveMessage(Socket socket) throws IOException {
-        final byte[] received = Util.readAllBytesFromNetwork(socket.getInputStream());
+        final byte[] received = modifiedReadAllBytesFromNetwork(socket);
+        if(received == null){
+            //There was a problem with the peer, most likely failed.
+            logger.log(Level.WARNING, "Problem with {0}. It most likely failed", socket);
+            return null;
+        }
         logger.log(Level.FINE, "Received message from {0}: {1}..\n Parsed as Message: {2}",
                 new Object[]{socket, received, new Message(received)});
         // ---- GOSSIP STUFF -----
@@ -101,12 +114,37 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
     public void shutdown(){
         if(this.javaRunnerFollower != null) javaRunnerFollower.shutdown();
         if(this.scheduler != null) scheduler.shutdown();
+        shutdown = true;
         this.interrupt();
+    }
+    public byte[] modifiedReadAllBytesFromNetwork(Socket socket)  {
+        InputStream in = null;
+        try {
+            in = socket.getInputStream();
+            while (in.available() == 0) {
+                try {
+                    //Due to inconsistencies between remote/local address, assume a peer is failed only if both are failed.
+                    //TODO: find a better system
+                    InetSocketAddress socketAddressLocal = new InetSocketAddress(socket.getLocalAddress().getHostName(), socket.getLocalPort()-2);
+                    InetSocketAddress socketAddressRemote = new InetSocketAddress(socket.getLocalAddress().getHostName(), socket.getPort()-2);
+                    if(server.isPeerDead(socketAddressLocal) && server.isPeerDead(socketAddressRemote)){
+                        logger.log(Level.WARNING, "Trying to read data from failed peer {0}", socket);
+                        return null;
+                    }
+                    sleep(1000);
+                }
+                catch (InterruptedException ignored) {
+                }
+            }
+        }
+        catch(IOException ignored){}
+        assert in != null;
+        return Util.readAllBytes(in);
     }
 
     @Override
     public Message call() {
-        while (!this.isInterrupted()) {
+        while (!this.isInterrupted() && !shutdown) {
             try {
                 //Now that we have the connection, what to do?
                 if(serverType == ServerType.CONNECTOR){
@@ -146,19 +184,47 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
                         //this is a worker. Assign the value and return it later
                         result = javaRunnerFollower.processWorkItem(msg);
                     } else if (serverType == ServerType.SCHEDULER){
-                        //This is the RoundRobinLeader. This will connect to a specified worker, which will accept,
-                        //process the data, and send back the result. The scheduler is required to close the connection.
-                        InetSocketAddress nextFollowerAddress = scheduler.getTCPAddressOfNextServer(msg);
-                        innerSocket = connectTcpServer(nextFollowerAddress);
-                        sendMessage(innerSocket, msg.getNetworkPayload());
-                        Message response = new Message(receiveMessage(innerSocket));
-                        this.sendMessage(outerSocket, response.getNetworkPayload());
+                        //if a server is found to have failed, try asking the next one:
+                        byte[] rawResponse = null;
+                        InetSocketAddress nextFollowerAddress = null;
+                        while(rawResponse== null){
+                            try {
+                                //This is the RoundRobinLeader. This will connect to a specified worker, which will accept,
+                                //process the data, and send back the result. The scheduler is required to close the connection.
+                                nextFollowerAddress = scheduler.getTCPAddressOfNextServer(msg);
+                                logger.log(Level.INFO, "Attempting to send work to worker id {0} at address {1}",
+                                        new Object[]{server.getPeerIdByAddress(nextFollowerAddress), nextFollowerAddress});
+                                innerSocket = connectTcpServer(nextFollowerAddress);
+                                sendMessage(innerSocket, msg.getNetworkPayload());
+                                rawResponse = receiveMessage(innerSocket);
+                                if (rawResponse != null) {
+                                    Message response = new Message(rawResponse);
+                                    this.sendMessage(outerSocket, response.getNetworkPayload());
+                                } else logger.log(Level.WARNING, "Sent message to failed node. Trying again:");
+                            } catch(ConnectException e){
+                                logger.log(Level.WARNING, "Unable to connect to address {0}. Trying next address", nextFollowerAddress);
+                            }
+
+                        }
+
                     }
                     logger.log(Level.FINE, "Received result: {0}", result);
                     Message completedWork = new Message(Message.MessageType.COMPLETED_WORK,
                             result.getBytes(StandardCharsets.UTF_8),this.myAddress.getHostString(), this.myAddress.getPort(),
                             outerSocket.getInetAddress().getHostName(), outerSocket.getPort(), msg.getRequestID());
-                    sendMessage(outerSocket, completedWork.getNetworkPayload());
+                    if(shutdown || isInterrupted()){
+                        logger.log(Level.SEVERE, "was interrupted before sending completed work...");
+                        break;
+                    }
+                    //this eliminates queuing. A server constantly tries to send result to the leader. If the leader is
+                    //dead, wait until a new leader is elected. Proactively send work, no need to wait for a request.
+                    while(!sendMessage(outerSocket, completedWork.getNetworkPayload())){
+                        logger.log(Level.WARNING, "Failed to send message. Leader is likely dead");
+                        while(!server.hasCurrentLeader || server.isPeerDead(server.getCurrentLeader().getProposedLeaderID())){
+                            Thread.sleep(500);
+                            logger.log(Level.INFO, "Leader is not available. Waiting until leader elected...");
+                        }
+                    }
                 }
 
             } catch (IOException e) {
@@ -166,11 +232,9 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
                 e.printStackTrace();
             } catch (InterruptedException e) {
                 this.logger.log(Level.WARNING,"Received InterruptedException in main loop.");
-                interrupt();
                 break;
             }
         }
-
         this.logger.log(Level.SEVERE,"Exiting TCPServer.run()");
         return null;
     }

@@ -126,6 +126,7 @@ public class Stage5HttpClientTest {
     public void electLeaderAndEvaluateActualNodeCountCorrectCode() throws IOException {
         int iterations = servers.size();
         for (int i = 0; i < iterations; i++) {
+            System.out.println("Iteration: " +i);
             String[] ret = sendHTTPRequest("text/x-java-source", new HashMap<>(), validClass, "/compileandrun", "POST", gs.getUdpPort());
             assertEquals("200", ret[0]);
             assertTrue(ret[1].contains("Hello world!"));
