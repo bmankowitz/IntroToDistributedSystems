@@ -1,0 +1,518 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AnalysisUIOptions">
+    <option name="SCOPE_TYPE" value="4" />
+    <option name="CUSTOM_SCOPE_NAME" value="Module 'stage4'" />
+  </component>
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="572c9ce9-168a-43fb-8256-e687ec3403d9" name="Changes" comment="stage 5 before refactoring (mostly working)">
+      <change afterPath="$PROJECT_DIR$/com3800/stage5/stage5.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/IntroToDistributedSystems.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/IntroToDistributedSystems.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage4/src/main/java/edu/yu/cs/com3800/LoggingServer.java" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage4/src/main/java/edu/yu/cs/com3800/LoggingServer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage4/stage4.iml" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage4/stage4.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage5/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/ElectionNotification.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/JavaFileObjectFromString.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/JavaRunner.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/LoggingServer.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/Message.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/SimpleServer.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/UDPMessageReceiver.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/UDPMessageSender.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/Util.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/Vote.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/ZooKeeperLeaderElection.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/ZooKeeperPeerServer.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GatewayPeerServerImpl.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GatewayServer.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GossipArchive.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GossipHttpServer.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GossipServer.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/JavaRunnerFollower.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/RoundRobinLeader.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/TCPServer.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/ZooKeeperPeerServerImpl.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/test/java/edu/yu/cs/com3800/stage5/Stage5GossipTest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/test/java/edu/yu/cs/com3800/stage5/Stage5HttpClientTest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/test/java/edu/yu/cs/com3800/stage5/Stage5RawNodesTest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/stage5.sh" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage5/stage5.sh" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="CodeInsightWorkspaceSettings">
+    <option name="optimizeImportsOnTheFly" value="true" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="29dd62e413c06f72c9a19ca5efddb03fe50cfaa0" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitSEFilterConfiguration">
+    <file-type-list>
+      <filtered-out-file-type name="LOCAL_BRANCH" />
+      <filtered-out-file-type name="REMOTE_BRANCH" />
+      <filtered-out-file-type name="TAG" />
+      <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
+    </file-type-list>
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/ZooKeeperPeerServerImpl.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/LoggingServer.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/com3800/stage5/pom.xml" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/UDPMessageReceiver.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/ZooKeeperPeerServer.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/ZooKeeperLeaderElection.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/test/java/edu/yu/cs/com3800/stage5/Stage5RawNodesTest.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/test/java/edu/yu/cs/com3800/stage5/Stage5HttpClientTest.java" root0="FORCE_HIGHLIGHTING" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="MavenImportPreferences">
+    <option name="generalSettings">
+      <MavenGeneralSettings>
+        <option name="threads" value="1" />
+        <option name="useMavenConfig" value="true" />
+      </MavenGeneralSettings>
+    </option>
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectId" id="22so2eqk6yYIoLzGRC1XwtWsDxO" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+    <option name="showMembers" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+    <property name="codeWithMe.voiceChat.enabledByDefault" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5" />
+    <property name="run.code.analysis.last.selected.profile" value="pProject Default" />
+    <property name="settings.editor.selected.configurable" value="MavenSettings" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5" />
+      <recent name="$PROJECT_DIR$/com3800/stage5" />
+      <recent name="$PROJECT_DIR$/com3800/stage4" />
+      <recent name="$PROJECT_DIR$/com3800" />
+    </key>
+    <key name="MoveClassesOrPackagesDialog.RECENTS_KEY">
+      <recent name="edu.yu.cs.com3800" />
+    </key>
+    <key name="CopyClassDialog.RECENTS_KEY">
+      <recent name="edu.yu.cs.com3800.stage5" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Maven.stage5 [surefire:test]">
+    <configuration name="Stage5GossipTest" type="JUnit" factoryName="JUnit" nameIsGenerated="true">
+      <module name="stage5" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="edu.yu.cs.com3800.stage5.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="edu.yu.cs.com3800.stage5" />
+      <option name="MAIN_CLASS_NAME" value="edu.yu.cs.com3800.stage5.Stage5GossipTest" />
+      <option name="METHOD_NAME" value="" />
+      <option name="TEST_OBJECT" value="class" />
+      <fork_mode value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Stage5GossipTest.clusterWorksAfterDeadLeaderMarkedNotYetCleaned" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="stage5" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="edu.yu.cs.com3800.stage5.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="edu.yu.cs.com3800.stage5" />
+      <option name="MAIN_CLASS_NAME" value="edu.yu.cs.com3800.stage5.Stage5GossipTest" />
+      <option name="METHOD_NAME" value="clusterWorksAfterDeadLeaderMarkedNotYetCleaned" />
+      <option name="TEST_OBJECT" value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Stage5GossipTest.clusterWorksAfterLeaderDeadNotYetMarked" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="stage5" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="edu.yu.cs.com3800.stage5.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="edu.yu.cs.com3800.stage5" />
+      <option name="MAIN_CLASS_NAME" value="edu.yu.cs.com3800.stage5.Stage5GossipTest" />
+      <option name="METHOD_NAME" value="clusterWorksAfterLeaderDeadNotYetMarked" />
+      <option name="TEST_OBJECT" value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Stage5GossipTest.clusterWorksAfterTwoWorkersDeadNotYetMarked" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="stage5" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="edu.yu.cs.com3800.stage5.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="edu.yu.cs.com3800.stage5" />
+      <option name="MAIN_CLASS_NAME" value="edu.yu.cs.com3800.stage5.Stage5GossipTest" />
+      <option name="METHOD_NAME" value="clusterWorksAfterTwoWorkersDeadNotYetMarked" />
+      <option name="TEST_OBJECT" value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Stage5GossipTest.nodesDoNotArbitrarilyDie" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="stage5" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="edu.yu.cs.com3800.stage5.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="edu.yu.cs.com3800.stage5" />
+      <option name="MAIN_CLASS_NAME" value="edu.yu.cs.com3800.stage5.Stage5GossipTest" />
+      <option name="METHOD_NAME" value="nodesDoNotArbitrarilyDie" />
+      <option name="TEST_OBJECT" value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Stage5HttpClientTest" type="JUnit" factoryName="JUnit" nameIsGenerated="true">
+      <module name="stage5" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="edu.yu.cs.com3800.stage5.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="edu.yu.cs.com3800.stage5" />
+      <option name="MAIN_CLASS_NAME" value="edu.yu.cs.com3800.stage5.Stage5HttpClientTest" />
+      <option name="METHOD_NAME" value="" />
+      <option name="TEST_OBJECT" value="class" />
+      <fork_mode value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Stage5HttpClientTest" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="stage5" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="edu.yu.cs.com3800.stage5.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="edu.yu.cs.com3800.stage5" />
+      <option name="MAIN_CLASS_NAME" value="" />
+      <option name="METHOD_NAME" value="" />
+      <option name="TEST_OBJECT" value="pattern" />
+      <patterns>
+        <pattern testClass="edu.yu.cs.com3800.stage5.Stage5GossipTest, edu.yu.cs.com3800.stage5.Stage5HttpClientTest" />
+      </patterns>
+      <fork_mode value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Stage5RawNodesTest" type="JUnit" factoryName="JUnit" nameIsGenerated="true">
+      <module name="stage5" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="edu.yu.cs.com3800.stage5.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="edu.yu.cs.com3800.stage5" />
+      <option name="MAIN_CLASS_NAME" value="edu.yu.cs.com3800.stage5.Stage5RawNodesTest" />
+      <option name="METHOD_NAME" value="" />
+      <option name="TEST_OBJECT" value="class" />
+      <fork_mode value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="stage5 [surefire:test]" type="MavenRunConfiguration" factoryName="Maven" temporary="true">
+      <MavenSettings>
+        <option name="myGeneralSettings" />
+        <option name="myRunnerSettings" />
+        <option name="myRunnerParameters">
+          <MavenRunnerParameters>
+            <option name="profiles">
+              <set />
+            </option>
+            <option name="goals">
+              <list>
+                <option value="surefire:test" />
+              </list>
+            </option>
+            <option name="pomFileName" value="pom.xml" />
+            <option name="profilesMap">
+              <map />
+            </option>
+            <option name="resolveToWorkspace" value="false" />
+            <option name="workingDirPath" value="$PROJECT_DIR$/com3800/stage5" />
+          </MavenRunnerParameters>
+        </option>
+      </MavenSettings>
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="JUnit.Stage5GossipTest" />
+      <item itemvalue="JUnit.Stage5HttpClientTest" />
+      <item itemvalue="JUnit.Stage5RawNodesTest" />
+      <item itemvalue="JUnit.Stage5GossipTest.clusterWorksAfterDeadLeaderMarkedNotYetCleaned" />
+      <item itemvalue="JUnit.Stage5GossipTest.clusterWorksAfterLeaderDeadNotYetMarked" />
+      <item itemvalue="JUnit.Stage5GossipTest.clusterWorksAfterTwoWorkersDeadNotYetMarked" />
+      <item itemvalue="JUnit.Stage5GossipTest.nodesDoNotArbitrarilyDie" />
+      <item itemvalue="Maven.stage5 [surefire:test]" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Maven.stage5 [surefire:test]" />
+        <item itemvalue="JUnit.Stage5HttpClientTest" />
+        <item itemvalue="JUnit.Stage5GossipTest.nodesDoNotArbitrarilyDie" />
+        <item itemvalue="JUnit.Stage5GossipTest.clusterWorksAfterTwoWorkersDeadNotYetMarked" />
+        <item itemvalue="JUnit.Stage5GossipTest.clusterWorksAfterLeaderDeadNotYetMarked" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="572c9ce9-168a-43fb-8256-e687ec3403d9" name="Changes" comment="" />
+      <created>1640635449813</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1640635449813</updated>
+    </task>
+    <task id="LOCAL-00001" summary="stage 4 in progress partially working">
+      <created>1640821174467</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1640821174467</updated>
+    </task>
+    <task id="LOCAL-00002" summary="stage 4 working">
+      <created>1641142615973</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1641142615973</updated>
+    </task>
+    <task id="LOCAL-00003" summary="stage 4 http working">
+      <created>1641432773392</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1641432773392</updated>
+    </task>
+    <task id="LOCAL-00004" summary="stage 5 detection working">
+      <created>1641876442273</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1641876442273</updated>
+    </task>
+    <task id="LOCAL-00005" summary="stage 5 before refactoring (mostly working)">
+      <created>1642444821672</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1642444821672</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="RECENT_FILTERS">
+      <map>
+        <entry key="Branch">
+          <value>
+            <list>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="master" />
+                </option>
+              </RecentGroup>
+            </list>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="stage 4 in progress partially working" />
+    <MESSAGE value="stage 4 working" />
+    <MESSAGE value="stage 4 http working" />
+    <MESSAGE value="stage 5 detection working" />
+    <MESSAGE value="stage 5 before refactoring (mostly working)" />
+    <option name="LAST_COMMIT_MESSAGE" value="stage 5 before refactoring (mostly working)" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/com3800/stage4/src/test/java/edu/yu/cs/com3800/stage4/Stage4TestRawNodes.java</url>
+          <line>169</line>
+          <option name="timeStamp" value="9" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/com3800/stage4/src/test/java/edu/yu/cs/com3800/stage4/Stage4TestRawNodes.java</url>
+          <line>170</line>
+          <option name="timeStamp" value="10" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/com3800/stage4/src/test/java/edu/yu/cs/com3800/stage4/Stage4TestRawNodes.java</url>
+          <line>248</line>
+          <option name="timeStamp" value="12" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/com3800/stage4/src/test/java/edu/yu/cs/com3800/stage4/Stage4TestRawNodes.java</url>
+          <line>125</line>
+          <option name="timeStamp" value="13" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/com3800/stage5/src/test/java/edu/yu/cs/com3800/stage5/Stage5GossipTest.java</url>
+          <line>179</line>
+          <option name="timeStamp" value="96" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/TCPServer.java</url>
+          <line>213</line>
+          <option name="timeStamp" value="113" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/com3800/stage5/src/test/java/edu/yu/cs/com3800/stage5/Stage5HttpClientTest.java</url>
+          <line>170</line>
+          <option name="timeStamp" value="114" />
+        </line-breakpoint>
+        <breakpoint enabled="true" type="java-exception">
+          <properties class="java.lang.NullPointerException" package="java.lang">
+            <catch-class-filters>
+              <class-filter pattern="edu.yu.cs.com3800.*" />
+            </catch-class-filters>
+            <option name="catch-filters-enabled" value="true" />
+            <class-exclusion-filters>
+              <class-filter pattern="edu.yu.cs.com3800.JavaRunner" />
+            </class-exclusion-filters>
+          </properties>
+          <option name="timeStamp" value="3" />
+        </breakpoint>
+        <breakpoint enabled="true" type="java-exception">
+          <properties class="java.net.ConnectException" package="java.net" />
+          <option name="timeStamp" value="32" />
+        </breakpoint>
+        <breakpoint enabled="true" type="java-exception">
+          <properties class="java.lang.InterruptedException" package="java.lang">
+            <option name="class-filters-enabled" value="true" />
+            <class-filters>
+              <class-filter pattern="edu.yu.cs.com3800.*" />
+            </class-filters>
+          </properties>
+          <option name="timeStamp" value="43" />
+        </breakpoint>
+        <breakpoint enabled="true" type="java-exception">
+          <properties class="java.util.ConcurrentModificationException" package="java.util" />
+          <option name="timeStamp" value="61" />
+        </breakpoint>
+        <breakpoint enabled="true" type="java-exception">
+          <properties class="java.io.NotSerializableException" package="java.io" />
+          <option name="timeStamp" value="63" />
+        </breakpoint>
+        <breakpoint enabled="true" type="java-exception">
+          <properties class="java.net.SocketException" package="java.net" />
+          <option name="timeStamp" value="99" />
+        </breakpoint>
+        <breakpoint enabled="true" type="java-wildcard-method">
+          <properties class="Thread" method="interrupt()">
+            <option name="EMULATED" value="true" />
+            <option name="WATCH_EXIT" value="false" />
+          </properties>
+          <option name="timeStamp" value="84" />
+        </breakpoint>
+        <line-breakpoint enabled="true" type="java-method">
+          <url>file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GossipArchive.java</url>
+          <line>40</line>
+          <properties class="edu.yu.cs.com3800.stage5.GossipArchive.GossipLine">
+            <option name="EMULATED" value="true" />
+            <option name="WATCH_EXIT" value="false" />
+          </properties>
+          <option name="timeStamp" value="91" />
+        </line-breakpoint>
+      </breakpoints>
+      <default-breakpoints>
+        <breakpoint enabled="true" type="java-exception">
+          <properties>
+            <option name="class-filters-enabled" value="true" />
+            <class-exclusion-filters>
+              <class-filter pattern="edu.yu.cs.com3800.JavaRunner" />
+            </class-exclusion-filters>
+            <class-filters>
+              <class-filter pattern="edu.yu.cs.com3800.*" />
+            </class-filters>
+          </properties>
+        </breakpoint>
+      </default-breakpoints>
+    </breakpoint-manager>
+    <pin-to-top-manager>
+      <pinned-members>
+        <PinnedItemInfo parentTag="java.net.ConnectException" memberName="stackTrace" />
+      </pinned-members>
+    </pin-to-top-manager>
+    <watches-manager>
+      <configuration name="JUnit">
+        <watch expression="this.id" language="JAVA" />
+      </configuration>
+    </watches-manager>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/IntroToDistributedSystems$Stage4TestUsingClient_contentTypeIsJavaValidCode.ic" NAME="Stage4TestUsingClient.contentTypeIsJavaValidCode Coverage Results" MODIFIED="1641403658980" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="idea" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false">
+      <FILTER>edu.yu.cs.com3800.stage4.*</FILTER>
+    </SUITE>
+    <SUITE FILE_PATH="coverage/IntroToDistributedSystems$Stage5HttpClientTest.ic" NAME="Stage5HttpClientTest Coverage Results" MODIFIED="1642380763660" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="idea" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false">
+      <FILTER>edu.yu.cs.com3800.stage5.*</FILTER>
+    </SUITE>
+  </component>
+</project>
