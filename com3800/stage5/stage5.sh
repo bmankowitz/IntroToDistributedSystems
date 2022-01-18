@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#Partnered with Michael Edelman
+
 #Constant Variables:
 background_results=""
 gossip_time=2.0
@@ -25,6 +27,33 @@ compile_code () {
   pid_var=$!
   server_to_pid[$1]=$pid_var
 }
+run_mvn_tests () {
+  #for some reason, maven keeps trying to run each test in parallel. This tries to create multiple servers on the same
+  #port, which is a failure. Unfortunately, this forces us to run each test individually
+  mvn clean -Dtest=Stage5GossipTest#gossipTimerIsUpdated test
+  mvn -Dtest=Stage5GossipTest#nodesDoNotArbitrarilyDie test
+  mvn -Dtest=Stage5GossipTest#deadNodeDetectedAfterFullCleanup test
+  mvn -Dtest=Stage5GossipTest#deadNodeMarkedBeforeDeleted test
+  mvn -Dtest=Stage5GossipTest#gossipHttpTest test
+  mvn -Dtest=Stage5GossipTest#clusterWorksAfterDeadWorkerCleanedUp test
+  mvn -Dtest=Stage5GossipTest#clusterWorksAfterDeadWorkerMarkedNotYetCleaned test
+  mvn -Dtest=Stage5GossipTest#clusterWorksAfterWorkerDeadNotYetMarked test
+  mvn -Dtest=Stage5GossipTest#clusterWorksAfterTwoDeadWorkersCleanedUp test
+  mvn -Dtest=Stage5GossipTest#clusterWorksAfterTwoDeadWorkerMarkedNotYetCleaned test
+  mvn -Dtest=Stage5GossipTest#clusterWorksAfterTwoWorkersDeadNotYetMarked test
+  mvn -Dtest=Stage5GossipTest#clusterWorksAfterDeadLeaderCleanedUp test
+  mvn -Dtest=Stage5GossipTest#clusterWorksAfterDeadLeaderMarkedNotYetCleaned test
+  mvn -Dtest=Stage5GossipTest#clusterWorksAfterLeaderDeadNotYetMarked test
+
+  mvn -Dtest=Stage5HttpClientTest#singleRequestValidCode test
+  mvn -Dtest=Stage5HttpClientTest#singleRequestIncorrectCode test
+  mvn -Dtest=Stage5HttpClientTest#electLeaderAndEvaluateMultipleCorrectCode test
+  mvn -Dtest=Stage5HttpClientTest#electLeaderAndEvaluateMultipleIncorrectCode test
+  mvn -Dtest=Stage5HttpClientTest#electLeaderAndEvaluateActualNodeCountCorrectCode test
+  mvn -Dtest=Stage5HttpClientTest#electLeaderAndEvaluateActualNodeCountIncorrectCode test
+  mvn -Dtest=Stage5HttpClientTest#electLeaderAndEvaluateMoreThanNodeCountCorrectCode test
+  mvn -Dtest=Stage5HttpClientTest#electLeaderAndEvaluateMoreThanNodeCountIncorrectCode test
+}
 
  wait_election_completed () {
      #1 = port
@@ -32,15 +61,17 @@ compile_code () {
 
      echo "Waiting until election is over"
      http_gossip_port=$(($1 + 1))
-     election_not_completed="true"
-     while [ "$election_not_completed" == "true" ]; do
+     election_completed=0
+     while [ $election_completed -ne 1 ]; do
          #sleep a little to slow down
          sleep .5
+         echo "checking on election"
 
          result=$(send_request $http_gossip_port 'getserverstatus')
          substring='=LEADING'
           if grep -q "$substring" <<< "$result"; then
-            election_not_completed="false"
+            election_completed=1
+            break
           fi
      done
      echo "Election complete"
@@ -48,7 +79,6 @@ compile_code () {
   get_gossip_info () {
       #1 = port
       #prints out gossip list
-      #TODO: slightly unstable
       http_gossip_port=$(($1 + 1))
       echo "Trying to get result of Gossip"
       local result=$(send_request $http_gossip_port 'getgossipinfo')
@@ -86,6 +116,14 @@ compile_code () {
     local result=$(curl --max-time 60 -s -d "$valid_code" -H "Content-Type: text/x-java-source" -X GET "http://localhost:$1/$2")
     echo "$result"
   }
+   send_request_silent () {
+      #1 = port
+      #2 = context
+      #returns whatever curl returns
+      # shellcheck disable=SC2155
+      local result=$(curl --max-time 60 -s -o /dev/null -d "$valid_code" -H "Content-Type: text/x-java-source" -X GET "http://localhost:$1/$2")
+      echo "$result"
+    }
  send_request_background () {
      #1 = port
      #2 = context
@@ -98,19 +136,23 @@ compile_code () {
  wait_requests_done () {
    for i in "${curl_request_pids[@]}"
       do
-        echo "Waiting for pid $i to finish"
+        echo "Waiting for curl pid $i to finish"
         wait "$i"
      done
  }
 
  ## STEPS ##
- #Pre-build:
- compile_code
 
+{
  #STEP 1 - Build code using mvn test
  # Given the long time to detecting node failure, this section may take up to 30 minutes. To reduce testing time,
  # reduce the gossip time
- #mvn clean test
+ echo "To adjust logging, look at the variable GossipServer.printGossipInfo"
+run_mvn_tests
+  #Pre-build:
+  compile_code
+  #This needs to be done separately because otherwise can't run main method
+
  #STEP 2 - Create 7 nodes and 1 gateway, starting each in array separate JVM
  for ((  i = 0;  i < 7;  i++ )); do
    (( port = 8000 + i * 10))
@@ -130,21 +172,28 @@ compile_code () {
   done
  #STEP 5 -
  #      a) kill -9 a follower JVM, printing out which one you are killing.
+ #before killing server, save the gossip log:
+ send_request_silent 3 'getgossipinfo'
  kill_server 3
+
  #      b) Wait heartbeat interval * 10 time
  time_to_wait=$(echo "$gossip_time*11.0" | bc)
  echo "Waiting $time_to_wait"
  sleep "$time_to_wait"
  #      c) and then retrieve and display the list of nodes. The dead node should not be on the list
+ get_server_status $gatewayPort
  result=$(get_server_status $gatewayPort)
  echo "$result"
  substring=' 3='
  if grep -q "$substring" <<< "$result"; then
    echo "Found server that was supposed to be dead. Test failed..."
+   else echo "Did not find failed server. Success..."
  fi
  #STEP 6 -
  #      a) kill -9 the leader JVM and wait 1000ms
- kill_server 6
+send_request_silent 6 'getgossipinfo'
+kill_server 6
+
  sleep 1
  #      b) send/display 9 more client requests to the gateway, in the background
  for ((  i = 0;  i < 9;  i++ )); do
@@ -161,9 +210,14 @@ compile_code () {
 last_request_result=$(send_request "$gatewayPort" 'compileandrun')
 echo "Result $last_request_result"
  #STEP 9 - list the paths to the files containing Gossip messages received by each node
- #TODO:
+ for ((  i = 0;  i < 7;  i++ )); do
+   (( port = 8001 + i * 10))
+     send_request "$port" 'getgossipinfo'
+ done
+ echo "The gossip messages are found in the pwd $(pwd) in the format: Server[id]GossipArchiveAt[time]"
+ echo "The complete log is found in the format: output.txt"
  #STEP 10 - shutdown all the nodes
  for ((  i = 0;  i < 8;  i++ )); do
     kill_server "$i"
   done
-
+  } | tee src/main/java/output.txt

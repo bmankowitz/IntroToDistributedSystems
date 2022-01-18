@@ -31,8 +31,7 @@ public interface LoggingServer {
         return log;
     }
     default Logger initializeLogging(String fileNamePreface) throws IOException{
-        //TODO: CHANGE the method to disable parent handlers!!
-        return initializeLogging(fileNamePreface, false);
-//        return initializeLogging(fileNamePreface, true);
+        //This method disables parent handlers:
+        return initializeLogging(fileNamePreface, true);
     }
 }

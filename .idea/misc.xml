@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="EntryPointsManager">
+    <pattern value="edu.yu.cs.com3800.stage5.GossipArchive.GossipLine" method="getId" />
+  </component>
   <component name="MavenProjectsManager">
     <option name="originalFiles">
       <list>
-        <option value="$PROJECT_DIR$/com3800/stage4/pom.xml" />
+        <option value="$PROJECT_DIR$/com3800/stage5/pom.xml" />
       </list>
     </option>
   </component>

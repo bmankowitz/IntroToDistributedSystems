@@ -6,6 +6,7 @@
       <excludeFolder url="file://$MODULE_DIR$/com3800/stage1" />
       <excludeFolder url="file://$MODULE_DIR$/com3800/stage2" />
       <excludeFolder url="file://$MODULE_DIR$/com3800/stage3" />
+      <excludeFolder url="file://$MODULE_DIR$/com3800/stage4" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
