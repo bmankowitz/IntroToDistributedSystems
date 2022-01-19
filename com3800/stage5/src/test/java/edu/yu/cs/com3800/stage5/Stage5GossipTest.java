@@ -81,17 +81,17 @@ public class Stage5GossipTest {
 
     @Test
     public void gossipTimerIsUpdated() throws IOException, InterruptedException {
-        long firstHeartbeat = servers.get(0).gossipHeartbeat.get();
+        long firstHeartbeat = servers.get(0).gs.gossipHeartbeat.get();
         Thread.sleep(GossipServer.GOSSIP_TIME + GossipServer.GOSSIP_TIME/2L);
-        long secondHeartbeat = servers.get(0).gossipHeartbeat.get();
+        long secondHeartbeat = servers.get(0).gs.gossipHeartbeat.get();
         Assert.assertTrue(secondHeartbeat > firstHeartbeat);
     }
     @Test
     public void nodesDoNotArbitrarilyDie() throws IOException, InterruptedException {
         ConcurrentHashMap<Long, GossipArchive.GossipLine> startingGossip, endingGossip;
-        startingGossip = new ConcurrentHashMap<>(servers.get(0).gossipTable);
+        startingGossip = new ConcurrentHashMap<>(servers.get(0).gs.gossipTable);
         Thread.sleep(500000);
-        endingGossip = servers.get(0).gossipTable;
+        endingGossip = servers.get(0).gs.gossipTable;
         Assert.assertEquals(startingGossip.keySet(), endingGossip.keySet());
         startingGossip.forEach((id, gossipLine) ->{
             Assert.assertTrue(endingGossip.containsKey(id));
@@ -102,32 +102,32 @@ public class Stage5GossipTest {
     @Test
     public void deadNodeDetectedAfterFullCleanup() throws IOException, InterruptedException {
         ConcurrentHashMap<Long, GossipArchive.GossipLine> startingGossip, endingGossip;
-        startingGossip = new ConcurrentHashMap<>(servers.get(1).gossipTable);
+        startingGossip = new ConcurrentHashMap<>(servers.get(1).gs.gossipTable);
         ZooKeeperPeerServerImpl serverToShutdown = servers.remove(0);
         long idToShutdown = serverToShutdown.getServerId();
         serverToShutdown.shutdown();
         Thread.sleep(GossipServer.GOSSIP_FAILURE_CLEANUP_TIME * 2L);
         servers.forEach(zooKeeperPeerServer -> {
             //should be null because failed nodes are removed after GOSSIP_FAILURE_CLEANUP_TIME
-            Assert.assertNull(zooKeeperPeerServer.gossipTable.get(idToShutdown));
+            Assert.assertNull(zooKeeperPeerServer.gs.gossipTable.get(idToShutdown));
         });
     }
     @Test
     public void deadNodeMarkedBeforeDeleted() throws IOException, InterruptedException {
         ConcurrentHashMap<Long, GossipArchive.GossipLine> startingGossip, endingGossip;
-        startingGossip = new ConcurrentHashMap<>(servers.get(1).gossipTable);
+        startingGossip = new ConcurrentHashMap<>(servers.get(1).gs.gossipTable);
         ZooKeeperPeerServerImpl serverToShutdown = servers.remove(0);
         long idToShutdown = serverToShutdown.getServerId();
         serverToShutdown.shutdown();
         Thread.sleep(GossipServer.GOSSIP_FAIL_TIME + 3L * GossipServer.GOSSIP_TIME);
         servers.forEach(zooKeeperPeerServer -> {
-            Assert.assertNotNull(zooKeeperPeerServer.gossipTable.get(idToShutdown));
+            Assert.assertNotNull(zooKeeperPeerServer.gs.gossipTable.get(idToShutdown));
             Assert.assertTrue(zooKeeperPeerServer.isPeerDead(idToShutdown));
-            Assert.assertTrue(zooKeeperPeerServer.gossipTable.get(idToShutdown).isFailed());
+            Assert.assertTrue(zooKeeperPeerServer.gs.gossipTable.get(idToShutdown).isFailed());
         });
         Thread.sleep(GossipServer.GOSSIP_FAILURE_CLEANUP_TIME + 3L* GossipServer.GOSSIP_TIME);
         servers.forEach(zooKeeperPeerServer -> {
-            Assert.assertNull(zooKeeperPeerServer.gossipTable.get(idToShutdown));
+            Assert.assertNull(zooKeeperPeerServer.gs.gossipTable.get(idToShutdown));
             Assert.assertTrue(zooKeeperPeerServer.isPeerDead(idToShutdown));
         });
     }

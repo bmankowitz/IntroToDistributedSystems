@@ -21,7 +21,7 @@ public interface LoggingServer {
         fileHandler.setFormatter(new SimpleFormatter());
         ConsoleHandler consoleHandler = new ConsoleHandler();
         //----- SET DESIRED LOGGING LEVEL ----
-        consoleHandler.setLevel(Level.SEVERE);
+        consoleHandler.setLevel(Level.FINE);
         fileHandler.setLevel(Level.FINE);
         //------------------------------------
         log.addHandler(fileHandler);

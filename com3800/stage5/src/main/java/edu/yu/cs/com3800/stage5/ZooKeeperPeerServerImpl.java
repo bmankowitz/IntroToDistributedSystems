@@ -20,6 +20,7 @@ import static edu.yu.cs.com3800.ZooKeeperPeerServer.ServerState.*;
 public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServer, LoggingServer{
     private final InetSocketAddress myAddress;
     private final int myPort;
+    public boolean hasCurrentLeader = false;
     private volatile ServerState state;
     private volatile boolean shutdown;
     private final LinkedBlockingQueue<Message> outgoingMessages;
@@ -27,9 +28,9 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     private final Long id;
     private long peerEpoch;
     private volatile Vote currentLeader;
-    public final Map<Long,InetSocketAddress> peerIDtoAddress;
-    public final Map<Long,ElectionNotification> peerIDtoVote = new HashMap<>();
-    public final Map<Long, ServerState> peerIDtoStatus;
+    public final ConcurrentHashMap<Long,InetSocketAddress> peerIDtoAddress;
+    private final HashMap<Long,ElectionNotification> peerIDtoVote;
+    public final ConcurrentHashMap<Long, ServerState> peerIDtoStatus;
     private Logger log;
     public final ExecutorService executorService = Executors.newFixedThreadPool(8);
     private TCPServer tcpServer;
@@ -37,34 +38,20 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     private UDPMessageReceiver receiverWorker;
     public final Set<Long> observerIds = new HashSet<>();
     //------ GOSSIP STUFF (TODO: MIGRATE) -------
-    public static int GOSSIP_TIME = 350;
-    public static final int GOSSIP_FAIL_TIME = GOSSIP_TIME * 10;
-    public static final int GOSSIP_FAILURE_CLEANUP_TIME = GOSSIP_FAIL_TIME * 2;
-    //gossip table: id to heartbeat time
-    public final ConcurrentHashMap<Long, GossipArchive.GossipLine> gossipTable;
-    public final AtomicLong gossipHeartbeat;
-    public final GossipArchive gossipArchive;
+    public GossipServer gs;
+    GossipHttpServer gossipHttpServer;
     //------ GOSSIP STUFF -----------------------
 
 
     public ZooKeeperPeerServerImpl(int myPort, long peerEpoch, Long id, Map<Long,InetSocketAddress> peerIDtoAddress) {
         //-------- GOSSIP STUFF --------
-        gossipTable = new ConcurrentHashMap<>();
-        gossipHeartbeat = new AtomicLong(0);
-        gossipArchive = new GossipArchive();
-        peerIDtoAddress.keySet().forEach((peerId) -> {
-            //Peers are assumed to be alive when first created. They will only fail after T_fail seconds
-                gossipTable.put(peerId, new GossipArchive.GossipLine(id, gossipHeartbeat.get(), System.currentTimeMillis(), false));
-                });
-        //if self wasn't included, add it now:
-        gossipTable.put(id, new GossipArchive.GossipLine(id, gossipHeartbeat.get(), System.currentTimeMillis(), false));
-        peerIDtoStatus = new HashMap<>();
+        peerIDtoStatus = new ConcurrentHashMap<>();
         //-------- GOSSIP STUFF --------
         this.outgoingMessages = new LinkedBlockingQueue<>();
         this.incomingMessages = new LinkedBlockingQueue<>();
         this.myAddress = new InetSocketAddress("localhost",myPort);
         this.myPort = myPort;
-        this.peerIDtoAddress = peerIDtoAddress;
+        this.peerIDtoAddress = new ConcurrentHashMap<>(peerIDtoAddress);
         this.id = id;
         this.peerEpoch = peerEpoch;
         try {
@@ -73,6 +60,13 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         } catch (Exception e) {e.printStackTrace();}
         state = ServerState.LOOKING;
         currentLeader = new Vote(this.id, this.peerEpoch);
+        //-------- GOSSIP STUFF --------
+        gs = new GossipServer(this);
+        gs.start();
+        gossipHttpServer = new GossipHttpServer(this);
+        gossipHttpServer.start();
+        //-------- GOSSIP STUFF --------
+        peerIDtoVote = new HashMap<>();
     }
 
     public Map<Long, InetSocketAddress> getPeerIDtoAddress() {
@@ -211,6 +205,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         //clear out the incoming queue before returning
         log.log(Level.INFO, "Elected leader {0}", n);
         setCurrentLeader(n);
+        hasCurrentLeader = true;
         if(this.id == currentLeader.getProposedLeaderID()) setPeerState(LEADING);
         else if(this.getPeerState() == OBSERVER){/* Do nothing - OBSERVER should never change state*/ }
         else setPeerState(FOLLOWING);
@@ -328,8 +323,9 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
                         && (this.getCurrentLeader() == null ||this.getCurrentLeader().getProposedLeaderID() == this.id);
                 //since we don't need fault-tolerance yet, just do leader search if we are LOOKING
                 //OR if we are an OBSERVER but the current leader is myself
-                if (isLooking || isObserverInitialState) lookForLeader();
-                processGossip();
+                if (!hasCurrentLeader){
+                    lookForLeader();
+                }
             } catch (Exception e) {
                 log.severe(Util.getStackTrace(e));
                 shutdown();
@@ -383,6 +379,8 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     @Override
     public void shutdown(){
         this.shutdown = true;
+        gs.shutdown();
+        gossipHttpServer.stop();
         this.senderWorker.shutdown();
         this.receiverWorker.shutdown();
         if(this.tcpServer != null) this.tcpServer.shutdown();
@@ -441,7 +439,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     @Override
     public void setPeerState(ServerState newState) {
         //per stage 5 requirements, double logging:
-        System.out.println(id+": switching from " +getPeerState()+ " to " +newState);
+        if(gs.displayPrintlnGossip) System.out.println(id+": switching from " +getPeerState()+ " to " +newState);
         log.log(Level.INFO, "Changing server state from {0} to {1}", new Object[]{state,newState});
         state = newState;
         peerIDtoStatus.put(id, newState);
@@ -511,120 +509,35 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     // ------------- GOSSIP STUFF ------------------
     @Override
     public boolean isPeerDead(InetSocketAddress address) {
-        Optional<Map.Entry<Long, InetSocketAddress>> getId = peerIDtoAddress.entrySet()
-                .stream().filter(entry -> entry.getValue().equals(address)).findFirst();
-        if(getId.isEmpty()) return true;
-        else return isPeerDead(getId.get().getKey());
+        return gs.isPeerDead(address);
     }
     @Override
     public void reportFailedPeer(long peerID) {
-        log.log(Level.WARNING, "{0}: no heartbeat from server {1} - server failed", new Object[]{this.id, peerID});
-        //double-logging per requirements
-        System.out.println(id+": no heartbeat from server "+peerID+" - server failed");
-        gossipTable.get(peerID).setFailed(true);
-        peerIDtoStatus.remove(peerID);
+        gs.reportFailedPeer(peerID);
     }
 
     @Override
     public boolean isPeerDead(long peerID) {
-        //Use sentinel value of -1 to indicate failed peer
-        //if the peer doesn't exist on the list, it is failed
-        return (gossipTable.get(peerID) == null || gossipTable.get(peerID).isFailed());
+        return gs.isPeerDead(peerID);
     }
-    public String getGossipArchive(){
-        //TODO: also create new log file
-        String gossipArchiveSnapshot = gossipArchive.getArchive();
-        try{
-            String fileName = "Server"+id+"GossipArchiveAt"+ LocalDateTime.now();
-            FileWriter logFile = new FileWriter(fileName);
-            logFile.write(gossipArchiveSnapshot);
-            logFile.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            log.warning("Error occured creating gossip log file");
-        }
-        return gossipArchiveSnapshot;
-    }
-    public void incorporateGossip(long senderId, ConcurrentHashMap<Long, GossipArchive.GossipLine> otherGossip){
-        otherGossip.forEach((otherId, otherGossipLine) ->{
-            if(gossipTable.get(otherId) == null || gossipTable.get(otherId).lastHeartbeat < otherGossipLine.lastHeartbeat) {
-                otherGossipLine.setLastUpdatedTime(System.currentTimeMillis());
-                gossipTable.put(otherId, otherGossipLine);
-                String logString = id + ": updated " + otherId + "'s heartbeat sequence to "
-                        + otherGossipLine.lastHeartbeat + " at node time " + System.currentTimeMillis();
-                //double logging per requirements:
-                log.log(Level.FINER, logString);
-                System.out.println(logString);
+
+
+    public Message getNextGossipMessage(long maxWaitMs) {
+        long startTime = System.currentTimeMillis();
+        //while(System.currentTimeMillis() - startTime < maxWaitMs) {
+            Optional<Message> msg = incomingMessages.stream().filter(x -> x.getMessageType() == Message.MessageType.GOSSIP).findFirst();
+            if (msg.isPresent()){
+                incomingMessages.remove(msg.get());
+                return msg.get();
             }
-            else log.log(Level.FINER, id + ": skipped updating " + otherId + "'s heartbeat because " +
-                                            otherGossipLine.lastHeartbeat + "is lower. Node time " + System.currentTimeMillis());
-        });
-        gossipArchive.addToArchive(senderId, System.currentTimeMillis(), gossipTable);
+        //}
+        return null;
     }
-    public void updateLocalGossipCounter(InetSocketAddress serverAddress){
-        long serverId = getPeerIdByAddress(serverAddress);
-        long newHeartbeat = gossipHeartbeat.get();
-        if(gossipTable.get(serverId) == null || newHeartbeat > gossipTable.get(serverId).getLastHeartbeat()){
-            log.log(Level.FINER, "Updating local gossip table. Changing server {0} from {1} to {2}",
-                    new Object[]{serverId, gossipTable.get(serverId), newHeartbeat});
-            GossipArchive.GossipLine gs = new GossipArchive.GossipLine(serverId, newHeartbeat, System.currentTimeMillis(), false);
-            gossipTable.put(serverId, gs);
-        }
-        else log.log(Level.FINEST, "ignoring heartbeat {0} from server {1}", new Object[]{newHeartbeat, serverId});
-    }
-    public void sendGossip(long gossipDestinationId) throws IOException {
-        byte[] bytes = GossipArchive.getBytesFromMap(this.gossipTable);
-        //Gossip messages are send by UDP not TCP because it does not deal with client work. See
-        sendMessage(Message.MessageType.GOSSIP, bytes, peerIDtoAddress.get(gossipDestinationId));
-    }
-    public void processGossip() throws InterruptedException, IOException, ClassNotFoundException {
-        //TODO: migrate some of this
-        Random random = new Random();
-        long lastUpdate = System.currentTimeMillis();
-        //the reason we stopped doing this when the leader is dead is because then we need to go back to leader election
-        //quick hack: just put it after the loop.
-        //TODO: This really needs to run in a separate thread
-        while (!isInterrupted() && !shutdown && !isPeerDead(getCurrentLeader().getProposedLeaderID())){
-            if(System.currentTimeMillis() - lastUpdate >= GOSSIP_TIME){
-                log.log(Level.INFO, "Incrementing current heartbeat to {0}", gossipHeartbeat.incrementAndGet());
-                lastUpdate = System.currentTimeMillis();
-                ArrayList<Long> validServers = new ArrayList<>(peerIDtoAddress.keySet());
-                Set<Long> idsToSkip = new HashSet<>();
-                validServers.forEach((id) ->{
-                    if(isPeerDead(id)){
-                        idsToSkip.add(id);
-                        if(gossipTable.get(id) != null &&
-                                System.currentTimeMillis() - gossipTable.get(id).getLastUpdatedTime() >= GOSSIP_FAILURE_CLEANUP_TIME){
-                            gossipTable.remove(id);
-                            log.log(Level.INFO, "Removed server {0} from gossipTable", id);
-                        }
-                    }
-                    else if(System.currentTimeMillis() - gossipTable.get(id).getLastUpdatedTime() >= GOSSIP_FAIL_TIME){
-                        reportFailedPeer(id);
-                        idsToSkip.add(id);
-                    }
-                });
-                validServers.removeAll(idsToSkip);
-                if(!validServers.isEmpty()) {
-                    long serverIdToSendGossip = validServers.get(random.nextInt(validServers.size()));
-                    sendGossip(serverIdToSendGossip);
-                }
-            }
-            Message incomingGossip = incomingMessages.poll();
-            if(incomingGossip != null && incomingGossip.getMessageType().equals(Message.MessageType.GOSSIP)){
-                log.log(Level.INFO, "Received gossip message {0}", incomingGossip);
-                long senderId = getPeerIdByAddress(new InetSocketAddress(incomingGossip.getSenderHost(), incomingGossip.getSenderPort()));
-                ConcurrentHashMap<Long, GossipArchive.GossipLine> otherGossipTable = GossipArchive.getMapFromBytes(incomingGossip.getMessageContents());
-                incorporateGossip(senderId, otherGossipTable);
-            }
-        }
-        if(shutdown || isInterrupted()){
-            log.log(Level.SEVERE, "Interrupted while gossiping");
-        }
-        else{
-            //the current leader failed. Go back to election
-            lookForLeader();
-        }
+    public void setCurrentLeaderFailed(){
+        this.setCurrentLeader(new Vote(this.getServerId(), this.getPeerEpoch()+1));
+        if(!this.getPeerState().equals(OBSERVER)) this.setPeerState(LOOKING);
+        peerIDtoVote.clear();
+        this.hasCurrentLeader = false;
     }
     // ------------- GOSSIP STUFF ------------------
 }

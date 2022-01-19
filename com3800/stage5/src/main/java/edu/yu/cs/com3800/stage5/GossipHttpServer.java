@@ -29,7 +29,7 @@ public class GossipHttpServer implements SimpleServer, LoggingServer {
             String requestString = new String(request);
             log.info("Received the following request:" + requestString);
             //Now to get the archive:
-            response = hostPeerServer.getGossipArchive();
+            response = hostPeerServer.gs.getGossipArchive();
             log.info("ResponseCode: 200");
             httpExchange.sendResponseHeaders(200, response.length());
             //Sending back the result

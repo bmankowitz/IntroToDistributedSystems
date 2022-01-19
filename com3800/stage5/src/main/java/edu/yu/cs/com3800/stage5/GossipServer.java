@@ -4,16 +4,20 @@ import edu.yu.cs.com3800.LoggingServer;
 import edu.yu.cs.com3800.Message;
 import edu.yu.cs.com3800.Util;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class GossipServer extends Thread implements LoggingServer {
-    public static final boolean printGossipInfo = false;
     public static int GOSSIP_TIME = 1500;
     public static final int GOSSIP_FAIL_TIME = GOSSIP_TIME * 10;
     public static final int GOSSIP_FAILURE_CLEANUP_TIME = GOSSIP_FAIL_TIME * 2;
@@ -22,35 +26,50 @@ public class GossipServer extends Thread implements LoggingServer {
     Logger log;
     Random random = new Random();
     long lastUpdate = System.currentTimeMillis();
+    //gossip table: id to heartbeat time
+    public final ConcurrentHashMap<Long, GossipArchive.GossipLine> gossipTable;
+    public final AtomicLong gossipHeartbeat;
+    public final GossipArchive gossipArchive;
+    public final boolean displayPrintlnGossip = false;
 
     public GossipServer(ZooKeeperPeerServerImpl server) {
         this.server = server;
         setDaemon(true);
+        setName("GossipServerUdpPort"+server.getUdpPort());
         try {
             log = initializeLogging(this.getClass().getCanonicalName() + "-on-server-port-"+server.getUdpPort());
         } catch (IOException e) {
             e.printStackTrace();
         }
+        gossipTable = new ConcurrentHashMap<>();
+        gossipHeartbeat = new AtomicLong(0);
+        gossipArchive = new GossipArchive();
+        server.peerIDtoAddress.keySet().forEach((peerId) -> {
+            //Peers are assumed to be alive when first created. They will only fail after T_fail seconds
+            gossipTable.put(peerId, new GossipArchive.GossipLine(server.getServerId(), gossipHeartbeat.get(), System.currentTimeMillis(), false));
+        });
+        //if self wasn't included, add it now:
+        gossipTable.put(server.getServerId(), new GossipArchive.GossipLine(server.getServerId(), gossipHeartbeat.get(), System.currentTimeMillis(), false));
     }
     private void checkEachServerFailed(){
         ArrayList<Long> servers = new ArrayList<>(server.peerIDtoAddress.keySet());;
         servers.forEach((id) -> {
             if (server.isPeerDead(id)) {
-                if (server.gossipTable.get(id) != null &&
-                        (System.currentTimeMillis() - server.gossipTable.get(id).getLastUpdatedTime() >= GOSSIP_FAILURE_CLEANUP_TIME)) {
-                    server.gossipTable.remove(id);
+                if (gossipTable.get(id) != null &&
+                        (System.currentTimeMillis() - gossipTable.get(id).getLastUpdatedTime() >= GOSSIP_FAILURE_CLEANUP_TIME)) {
+                    gossipTable.remove(id);
                     //TODO: change this back to info
                     log.log(Level.SEVERE, "Removed server {0} from gossipTable", id);
                 }
-            } else if (System.currentTimeMillis() - server.gossipTable.get(id).getLastUpdatedTime() >= GOSSIP_FAIL_TIME) {
+            } else if (System.currentTimeMillis() - gossipTable.get(id).getLastUpdatedTime() >= GOSSIP_FAIL_TIME) {
                 server.reportFailedPeer(id);
             }
         });
     }
     private void gossipToRandomServer() throws IOException {
-        log.log(Level.INFO, "Incrementing current heartbeat to {0}", server.gossipHeartbeat.incrementAndGet());
+        log.log(Level.INFO, "Incrementing current heartbeat to {0}", gossipHeartbeat.incrementAndGet());
         //TODO: this may cause cascading failures
-        server.updateLocalGossipCounter(server.getMyAddress());
+        updateLocalGossipCounter(server.getMyAddress());
 
         ArrayList<Long> potentialGossipServers = new ArrayList<>(server.peerIDtoAddress.keySet());
         potentialGossipServers.remove(server.getServerId());
@@ -60,7 +79,7 @@ public class GossipServer extends Thread implements LoggingServer {
             while (server.isPeerDead(serverIdToSendGossip)) {
                 serverIdToSendGossip = potentialGossipServers.get(random.nextInt(potentialGossipServers.size()));
             }
-            server.sendGossip(serverIdToSendGossip);
+            sendGossip(serverIdToSendGossip);
             log.log(Level.INFO, "Sent gossip to server {0}", serverIdToSendGossip);
         }
         lastUpdate = System.currentTimeMillis();
@@ -71,9 +90,77 @@ public class GossipServer extends Thread implements LoggingServer {
             log.log(Level.FINEST, "Received gossip message {0}", incomingGossip);
             long senderId = server.getPeerIdByAddress(new InetSocketAddress(incomingGossip.getSenderHost(), incomingGossip.getSenderPort()));
             ConcurrentHashMap<Long, GossipArchive.GossipLine> otherGossipTable = GossipArchive.getMapFromBytes(incomingGossip.getMessageContents());
-            server.incorporateGossip(senderId, otherGossipTable);
+            incorporateGossip(senderId, otherGossipTable);
         }
     }
+    public String getGossipArchive(){
+        //TODO: also create new log file
+        String gossipArchiveSnapshot = gossipArchive.getArchive();
+        try{
+            String fileName = "Server"+server.getServerId()+"GossipArchiveAt"+ LocalDateTime.now();
+            FileWriter logFile = new FileWriter(fileName);
+            logFile.write(gossipArchiveSnapshot);
+            logFile.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            log.warning("Error occured creating gossip log file");
+        }
+        return gossipArchiveSnapshot;
+    }
+    public void incorporateGossip(long senderId, ConcurrentHashMap<Long, GossipArchive.GossipLine> otherGossip){
+        otherGossip.forEach((otherId, otherGossipLine) ->{
+            if(gossipTable.get(otherId) == null || gossipTable.get(otherId).lastHeartbeat < otherGossipLine.lastHeartbeat) {
+                otherGossipLine.setLastUpdatedTime(System.currentTimeMillis());
+                gossipTable.put(otherId, otherGossipLine);
+                String logString = server.getServerId() + ": updated " + otherId + "'s heartbeat sequence to "
+                        + otherGossipLine.lastHeartbeat + " at node time " + System.currentTimeMillis();
+                //double logging per requirements:
+                log.log(Level.FINER, logString);
+                if(displayPrintlnGossip) System.out.println(logString);
+            }
+            else log.log(Level.FINER, server.getServerId() + ": skipped updating " + otherId + "'s heartbeat because " +
+                    otherGossipLine.lastHeartbeat + "is lower. Node time " + System.currentTimeMillis());
+        });
+        gossipArchive.addToArchive(senderId, System.currentTimeMillis(), gossipTable);
+    }
+    public void updateLocalGossipCounter(InetSocketAddress serverAddress){
+        long serverId = server.getPeerIdByAddress(serverAddress);
+        long newHeartbeat = gossipHeartbeat.get();
+        if(gossipTable.get(serverId) == null || newHeartbeat > gossipTable.get(serverId).getLastHeartbeat()){
+            log.log(Level.FINER, "Updating local gossip table. Changing server {0} from {1} to {2}",
+                    new Object[]{serverId, gossipTable.get(serverId), newHeartbeat});
+            GossipArchive.GossipLine gs = new GossipArchive.GossipLine(serverId, newHeartbeat, System.currentTimeMillis(), false);
+            gossipTable.put(serverId, gs);
+        }
+        else log.log(Level.FINEST, "ignoring heartbeat {0} from server {1}", new Object[]{newHeartbeat, serverId});
+    }
+    public void sendGossip(long gossipDestinationId) throws IOException {
+        byte[] bytes = GossipArchive.getBytesFromMap(this.gossipTable);
+        //Gossip messages are send by UDP not TCP because it does not deal with client work. See
+        server.sendMessage(Message.MessageType.GOSSIP, bytes, server.peerIDtoAddress.get(gossipDestinationId));
+    }
+
+    public boolean isPeerDead(InetSocketAddress address) {
+        Optional<Map.Entry<Long, InetSocketAddress>> getId = server.peerIDtoAddress.entrySet()
+                .stream().filter(entry -> entry.getValue().equals(address)).findFirst();
+        if(getId.isEmpty()) return true;
+        else return isPeerDead(getId.get().getKey());
+    }
+
+    public void reportFailedPeer(long peerID) {
+        log.log(Level.WARNING, "{0}: no heartbeat from server {1} - server failed", new Object[]{this.server.getServerId(), peerID});
+        //double-logging per requirements
+        System.out.println(server.getServerId()+": no heartbeat from server "+peerID+" - server failed");
+        gossipTable.get(peerID).setFailed(true);
+        server.peerIDtoStatus.remove(peerID);
+    }
+
+    public boolean isPeerDead(long peerID) {
+        //Use sentinel value of -1 to indicate failed peer
+        //if the peer doesn't exist on the list, it is failed
+        return (gossipTable.get(peerID) == null || gossipTable.get(peerID).isFailed());
+    }
+
     @Override
     public void run() {
         while(!this.isInterrupted() && !shutdown) {

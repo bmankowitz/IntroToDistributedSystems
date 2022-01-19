@@ -57,15 +57,15 @@ public class UDPMessageReceiver extends Thread implements LoggingServer {
                 }
                 this.logger.fine("UDP packet received:\n" + received);
                 //-------- GOSSIP STUFF ---------
-                ((ZooKeeperPeerServerImpl) peerServer).updateLocalGossipCounter(sender);
+                ((ZooKeeperPeerServerImpl) peerServer).gs.updateLocalGossipCounter(sender);
                 //STAGE 5: update server state:
                 if(received.getMessageType() == Message.MessageType.ELECTION){
                     ElectionNotification electionNotification = ZooKeeperPeerServerImpl.getNotificationFromMessage(received);
                     Long serverId = ((ZooKeeperPeerServerImpl) peerServer).getPeerIdByAddress(sender);
-                    if(serverId == null || serverId == -1L){
-                        //((ZooKeeperPeerServerImpl) peerServer).shutdown();
-                        //throw new RuntimeException("SHOULD NOT BE NULL!!!");
-                    }
+//                    if(serverId == -1L){
+//                        //((ZooKeeperPeerServerImpl) peerServer).shutdown();
+//                        //throw new RuntimeException("SHOULD NOT BE NULL!!!");
+//                    }
                     ((ZooKeeperPeerServerImpl) peerServer).peerIDtoStatus.put(serverId, electionNotification.getState());
                 }
                 //-------- GOSSIP STUFF ---------

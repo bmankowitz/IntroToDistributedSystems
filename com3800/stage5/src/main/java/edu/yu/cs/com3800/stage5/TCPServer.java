@@ -64,7 +64,7 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
         logger.log(Level.INFO, "Accepted connection from {0} on port {1}.", new Object[]{client, address.getPort()});
         // ---- GOSSIP STUFF -----
         InetSocketAddress socketAddress = new InetSocketAddress(client.getLocalAddress().getHostName(), client.getLocalPort());
-        server.updateLocalGossipCounter(socketAddress);
+        server.gs.updateLocalGossipCounter(socketAddress);
         // ---- GOSSIP STUFF -----
         return client;
     }
@@ -101,7 +101,7 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
                 new Object[]{socket, received, new Message(received)});
         // ---- GOSSIP STUFF -----
         InetSocketAddress socketAddress = new InetSocketAddress(socket.getLocalAddress().getHostName(), socket.getLocalPort());
-        server.updateLocalGossipCounter(socketAddress);
+        server.gs.updateLocalGossipCounter(socketAddress);
         // ---- GOSSIP STUFF -----
         return received;
     }
