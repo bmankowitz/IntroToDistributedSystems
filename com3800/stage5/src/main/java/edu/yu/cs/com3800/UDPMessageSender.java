@@ -39,7 +39,7 @@ public class UDPMessageSender extends Thread implements LoggingServer {
                     DatagramPacket sendPacket = new DatagramPacket(payload, payload.length, new InetSocketAddress(messageToSend.getReceiverHost(), messageToSend.getReceiverPort()));
                     socket.send(sendPacket);
                     socket.close();
-                    this.logger.fine("Message sent:\n" + messageToSend.toString());
+                    this.logger.finer("Message sent:\n" + messageToSend.toString());
                 }
             }
             catch (IOException e) {

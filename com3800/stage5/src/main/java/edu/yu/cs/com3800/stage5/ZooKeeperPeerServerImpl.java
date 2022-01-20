@@ -58,8 +58,6 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
             log = initializeLogging(ZooKeeperPeerServerImpl.class.getCanonicalName() + "-on-port-"+getUdpPort(),
                     false);
         } catch (Exception e) {e.printStackTrace();}
-        state = ServerState.LOOKING;
-        currentLeader = new Vote(this.id, this.peerEpoch);
         //-------- GOSSIP STUFF --------
         gs = new GossipServer(this);
         gs.start();
@@ -67,6 +65,9 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         gossipHttpServer.start();
         //-------- GOSSIP STUFF --------
         peerIDtoVote = new HashMap<>();
+        setPeerState(LOOKING);
+        setCurrentLeader(new Vote(this.id, this.peerEpoch));
+        peerIDtoStatus.put(id, getPeerState());
     }
 
     public Map<Long, InetSocketAddress> getPeerIDtoAddress() {
@@ -495,8 +496,13 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         //for odd numbers: integer division: 5/2 + 1 = 2 + 1 = 3
         return nonObserverNodes/2 + 1;
     }
-    public boolean isObserver(long id){
-        return peerIDtoVote.get(id) == null;
+    public boolean isObserver(long peerId){
+//        return peerIDtoVote.get(id) == null;
+        //System.out.println(peerIDtoStatus);
+        if(peerIDtoStatus == null || peerIDtoStatus.get(id) == null ){
+            System.out.println("nothing");
+        }
+        return peerIDtoStatus.get(peerId).equals(OBSERVER);
     }
     public long getPeerIdByAddress(InetSocketAddress address){
         AtomicLong returnId = new AtomicLong(-1);
@@ -534,7 +540,8 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         return null;
     }
     public void setCurrentLeaderFailed(){
-        this.setCurrentLeader(new Vote(this.getServerId(), this.getPeerEpoch()+1));
+//        this.setCurrentLeader(new Vote(this.getServerId(), this.getPeerEpoch()+1));
+        this.setCurrentLeader(new Vote(id, ++peerEpoch));
         if(!this.getPeerState().equals(OBSERVER)) this.setPeerState(LOOKING);
         peerIDtoVote.clear();
         this.hasCurrentLeader = false;

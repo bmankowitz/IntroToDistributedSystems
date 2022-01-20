@@ -97,7 +97,8 @@ public class GatewayServer implements SimpleServer, LoggingServer{
                 //sending the first request
                 Long minID = requestsToSend.keySet().stream().min(Long::compareTo).get();
                 String minIdRequest = requestsToSend.remove(minID);
-                log.log(Level.INFO, "Leader is available. Sending out request {0}. incompleteRequests: {1}, requestsToSend: {2}",
+                //todo: change log level
+                log.log(Level.WARNING, "Leader is available. Sending out request {0}. incompleteRequests: {1}, requestsToSend: {2}",
                         new Object[]{minID, incompleteRequests, requestsToSend});
 
                 int leaderPort = gateway.getLeaderAddress().getPort();
@@ -112,14 +113,13 @@ public class GatewayServer implements SimpleServer, LoggingServer{
                         gatewayServer.getAddress().getPort(), "localhost", leaderPort, requestID);
                 Thread.sleep(500);
                 byte[] response = null;
-                Socket lastSocket;
-
-                InetSocketAddress connectionAddress = new InetSocketAddress("localhost", leaderPort + 2);
-                TCPServer tcpGatewayServer = new TCPServer(gatewayServer, connectionAddress, TCPServer.ServerType.CONNECTOR, null);
-                lastSocket = tcpGatewayServer.connectTcpServer(connectionAddress);
-                tcpGatewayServer.sendMessage(lastSocket, msg.getNetworkPayload());
-                response = tcpGatewayServer.receiveMessage(lastSocket);
-                tcpGatewayServer.closeConnection(lastSocket);
+                Socket lastSocket = null;
+                    InetSocketAddress connectionAddress = new InetSocketAddress("localhost", leaderPort + 2);
+                    TCPServer tcpGatewayServer = new TCPServer(gatewayServer, connectionAddress, TCPServer.ServerType.CONNECTOR, null);
+                    lastSocket = tcpGatewayServer.connectTcpServer(connectionAddress);
+                    tcpGatewayServer.sendMessage(lastSocket, msg.getNetworkPayload());
+                    response = tcpGatewayServer.receiveMessage(lastSocket);
+                    tcpGatewayServer.closeConnection(lastSocket);
 
                 return response;
             } catch(InterruptedException | IOException e){

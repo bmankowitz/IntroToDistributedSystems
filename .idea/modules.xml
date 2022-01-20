@@ -3,7 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/IntroToDistributedSystems.iml" filepath="$PROJECT_DIR$/.idea/IntroToDistributedSystems.iml" />
-      <module fileurl="file://$PROJECT_DIR$/com3800/stage4/stage4.iml" filepath="$PROJECT_DIR$/com3800/stage4/stage4.iml" />
+      <module fileurl="file://$PROJECT_DIR$/com3800/stage5/stage5.iml" filepath="$PROJECT_DIR$/com3800/stage5/stage5.iml" />
     </modules>
   </component>
 </project>

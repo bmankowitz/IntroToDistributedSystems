@@ -174,7 +174,10 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
                         outerSocket = serverSocket.accept();
                     }
                     //get the request (ie block until a request comes in):
-                    byte[] request = receiveMessage(outerSocket);
+                    byte[] request = null;
+                    while(request == null) {
+                        request= receiveMessage(outerSocket);
+                    }
                     Message msg = new Message(request);
                     //need to add the message to the queue, and get back a response:
                     //Since at this point, everything is synchronous anyway, might as well create a synchronous

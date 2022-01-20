@@ -18,7 +18,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class GossipServer extends Thread implements LoggingServer {
-    public static int GOSSIP_TIME = 1500;
+    public static int GOSSIP_TIME = 350;
     public static final int GOSSIP_FAIL_TIME = GOSSIP_TIME * 10;
     public static final int GOSSIP_FAILURE_CLEANUP_TIME = GOSSIP_FAIL_TIME * 2;
     ZooKeeperPeerServerImpl server;

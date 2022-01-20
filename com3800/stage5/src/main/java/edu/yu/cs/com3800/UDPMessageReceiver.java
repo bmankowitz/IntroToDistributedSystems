@@ -45,17 +45,17 @@ public class UDPMessageReceiver extends Thread implements LoggingServer {
         //loop
         while (!this.isInterrupted()) {
             try {
-                this.logger.fine("Waiting for packet");
+                this.logger.finer("Waiting for packet");
                 DatagramPacket packet = new DatagramPacket(new byte[MAXLENGTH], MAXLENGTH);
                 socket.receive(packet); // Receive packet from a client
                 Message received = new Message(packet.getData());
                 InetSocketAddress sender = new InetSocketAddress(received.getSenderHost(), received.getSenderPort());
                 //ignore messages from peers marked as dead
                 if (this.peerServer != null && this.peerServer.isPeerDead(sender)) {
-                    this.logger.fine("UDP packet received from dead peer: " + sender + "; ignoring it.");
+                    this.logger.finer("UDP packet received from dead peer: " + sender + "; ignoring it.");
                     continue;
                 }
-                this.logger.fine("UDP packet received:\n" + received);
+                this.logger.finer("UDP packet received:\n" + received);
                 //-------- GOSSIP STUFF ---------
                 ((ZooKeeperPeerServerImpl) peerServer).gs.updateLocalGossipCounter(sender);
                 //STAGE 5: update server state:
@@ -73,7 +73,7 @@ public class UDPMessageReceiver extends Thread implements LoggingServer {
                 if (sendLeader(received)) {
                     Vote leader = this.peerServer.getCurrentLeader();
                     //might've entered election between the two previous lines of code, which would make leader null, hence must test
-                    if(leader != null){
+                    if(((ZooKeeperPeerServerImpl) peerServer).hasCurrentLeader){
                         ElectionNotification notification = new ElectionNotification(leader.getProposedLeaderID(), this.peerServer.getPeerState(), this.peerServer.getServerId(), this.peerServer.getPeerEpoch());
                         byte[] msgContent = ZooKeeperLeaderElection.buildMsgContent(notification);
                         sendElectionReply(msgContent, sender);
