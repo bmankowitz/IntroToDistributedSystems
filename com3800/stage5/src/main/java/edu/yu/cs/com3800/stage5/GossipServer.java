@@ -135,8 +135,12 @@ public class GossipServer extends Thread implements LoggingServer {
         else log.log(Level.FINEST, "ignoring heartbeat {0} from server {1}", new Object[]{newHeartbeat, serverId});
     }
     public void sendGossip(long gossipDestinationId) throws IOException {
+        ConcurrentHashMap<Long, GossipArchive.GossipLine> gossipToSend = new ConcurrentHashMap<>(gossipTable);
+        gossipTable.keySet().forEach((serverId) -> {
+            if(isPeerDead(serverId)) gossipToSend.remove(serverId);
+        });
         byte[] bytes = GossipArchive.getBytesFromMap(this.gossipTable);
-        //Gossip messages are send by UDP not TCP because it does not deal with client work. See
+        //Gossip messages are sent by UDP not TCP because it does not deal with client work. See
         server.sendMessage(Message.MessageType.GOSSIP, bytes, server.peerIDtoAddress.get(gossipDestinationId));
     }
 

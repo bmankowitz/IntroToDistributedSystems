@@ -52,7 +52,7 @@ public class UDPMessageReceiver extends Thread implements LoggingServer {
                 InetSocketAddress sender = new InetSocketAddress(received.getSenderHost(), received.getSenderPort());
                 //ignore messages from peers marked as dead
                 if (this.peerServer != null && this.peerServer.isPeerDead(sender)) {
-                    this.logger.finer("UDP packet received from dead peer: " + sender + "; ignoring it.");
+                    this.logger.fine("UDP packet received from dead peer: " + sender + "; ignoring it.");
                     continue;
                 }
                 this.logger.finer("UDP packet received:\n" + received);
@@ -62,10 +62,6 @@ public class UDPMessageReceiver extends Thread implements LoggingServer {
                 if(received.getMessageType() == Message.MessageType.ELECTION){
                     ElectionNotification electionNotification = ZooKeeperPeerServerImpl.getNotificationFromMessage(received);
                     Long serverId = ((ZooKeeperPeerServerImpl) peerServer).getPeerIdByAddress(sender);
-//                    if(serverId == -1L){
-//                        //((ZooKeeperPeerServerImpl) peerServer).shutdown();
-//                        //throw new RuntimeException("SHOULD NOT BE NULL!!!");
-//                    }
                     ((ZooKeeperPeerServerImpl) peerServer).peerIDtoStatus.put(serverId, electionNotification.getState());
                 }
                 //-------- GOSSIP STUFF ---------

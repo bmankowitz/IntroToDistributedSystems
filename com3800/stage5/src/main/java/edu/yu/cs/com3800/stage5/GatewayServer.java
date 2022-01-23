@@ -100,7 +100,11 @@ public class GatewayServer implements SimpleServer, LoggingServer{
                 //todo: change log level
                 log.log(Level.WARNING, "Leader is available. Sending out request {0}. incompleteRequests: {1}, requestsToSend: {2}",
                         new Object[]{minID, incompleteRequests, requestsToSend});
-
+                while(gateway.getLeaderAddress() == null){
+                    //Sleep until leader exists
+                    log.log(Level.WARNING, "Gateway cannot find leader");
+                    try{ Thread.sleep(300);} catch (Exception ignored){}
+                }
                 int leaderPort = gateway.getLeaderAddress().getPort();
                 returnValue = sendMessage(minID, minIdRequest, leaderPort, gateway);
             }

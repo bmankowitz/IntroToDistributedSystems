@@ -502,7 +502,17 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         if(peerIDtoStatus == null || peerIDtoStatus.get(id) == null ){
             System.out.println("nothing");
         }
-        return peerIDtoStatus.get(peerId).equals(OBSERVER);
+        //Unfortunately, there is no way to guarantee that a given server is an observer.
+        //If there is any received communication, we can check the ElectionNotification, but otherwise it
+        //is impossible to determine given the distributed nature of the system
+        if(peerIDtoStatus.get(peerId) != null && peerIDtoVote.get(peerId) != null){
+            if(peerIDtoStatus.get(peerId).equals(peerIDtoVote.get(peerId).getState())){
+               return peerIDtoStatus.get(peerId).equals(OBSERVER);
+            }
+        }
+        //otherwise impossible to determine if this server is an observer. Assume that it is until proven otherwise
+        //TODO: determine if correct
+        return true;
     }
     public long getPeerIdByAddress(InetSocketAddress address){
         AtomicLong returnId = new AtomicLong(-1);
