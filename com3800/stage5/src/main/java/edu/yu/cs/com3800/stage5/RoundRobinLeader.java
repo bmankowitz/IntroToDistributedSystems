@@ -6,6 +6,7 @@ import edu.yu.cs.com3800.Message;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -23,15 +24,15 @@ public class RoundRobinLeader extends Thread implements LoggingServer {
 
     public RoundRobinLeader(ZooKeeperPeerServerImpl server, LinkedBlockingQueue<Message> incomingMessageQueue) {
         this.server = server;
-        Map<Long, InetSocketAddress> peerIDtoAddress = server.getPeerIDtoAddress();
+        Map<Long, InetSocketAddress> localPeerIdAddressMap = new HashMap<>(server.getPeerIDtoAddress());
         HashSet<Long> observers = new HashSet<>();
-        peerIDtoAddress.forEach((id, x) -> {
+        localPeerIdAddressMap.forEach((id, x) -> {
             if(server.isObserver(id)){
                 observers.add(id);
             }
         });
-        observers.forEach(peerIDtoAddress::remove);
-        workerServers = new ArrayList<>(peerIDtoAddress.values());
+        observers.forEach(localPeerIdAddressMap::remove);
+        workerServers = new ArrayList<>(localPeerIdAddressMap.values());
         setDaemon(true);
         setName("RoundRobinLeader-port-" + server.getUdpPort());
 

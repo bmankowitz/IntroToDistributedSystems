@@ -26,6 +26,7 @@ public class GatewayServer implements SimpleServer, LoggingServer{
     HttpServer server;
 
     public static class JavaRunnerHandler implements HttpHandler {
+        //TODO: name class in threads / threadpool
         @Override
         public void handle(HttpExchange httpExchange) throws IOException {
             StringBuilder response;

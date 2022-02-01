@@ -97,7 +97,7 @@ run_mvn_tests () {
  get_leader_id () {
        #1 = port
       regex="([0-9])=LEADING"
-      test_str=$(send_request $http_gossip_port 'getserverstatus')
+      test_str=$(send_request "$1" 'getserverstatus')
       [[ $test_str =~ $regex ]]
       echo "Current leader: ${BASH_REMATCH[1]}"
  }

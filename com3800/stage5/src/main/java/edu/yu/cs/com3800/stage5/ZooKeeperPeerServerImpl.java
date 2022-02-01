@@ -58,6 +58,8 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
             log = initializeLogging(ZooKeeperPeerServerImpl.class.getCanonicalName() + "-on-port-"+getUdpPort(),
                     false);
         } catch (Exception e) {e.printStackTrace();}
+        //TODO: This may cause cascading failures...
+        this.peerIDtoAddress.put(id, myAddress);
         //-------- GOSSIP STUFF --------
         gs = new GossipServer(this);
         gs.start();
@@ -67,11 +69,10 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         peerIDtoVote = new HashMap<>();
         setPeerState(LOOKING);
         setCurrentLeader(new Vote(this.id, this.peerEpoch));
-        peerIDtoStatus.put(id, getPeerState());
     }
 
     public Map<Long, InetSocketAddress> getPeerIDtoAddress() {
-        return peerIDtoAddress;
+        return Collections.unmodifiableMap(peerIDtoAddress);
     }
     private Message getNextElectionMessage(long maxWaitMs){
         long startTime = System.currentTimeMillis();
@@ -373,7 +374,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     }
     public InetSocketAddress getLeaderAddress(){
         if(getCurrentLeader() == null) return null;
-        return peerIDtoAddress.get(getCurrentLeader().getProposedLeaderID());
+        return getPeerIDtoAddress().get(getCurrentLeader().getProposedLeaderID());
     }
 
 
@@ -421,7 +422,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
 
     @Override
     public synchronized void sendBroadcast(Message.MessageType type, byte[] messageContents) {
-        for(InetSocketAddress peer : peerIDtoAddress.values()) {
+        for(InetSocketAddress peer : getPeerIDtoAddress().values()) {
             //no need to send messages to myself
             if(peer.equals(myAddress)) continue;
             //no need to send messages to dead peers
@@ -468,7 +469,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
 
     @Override
     public InetSocketAddress getPeerByID(long peerId) {
-        return peerIDtoAddress.get(peerId);
+        return getPeerIDtoAddress().get(peerId);
     }
 
     /**
@@ -514,11 +515,19 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         //TODO: determine if correct
         return true;
     }
-    public long getPeerIdByAddress(InetSocketAddress address){
-        AtomicLong returnId = new AtomicLong(-1);
+    public Long getPeerIdByAddress(InetSocketAddress address){
+        AtomicLong returnId = new AtomicLong(-1L);
+        //if(address.equals(this.myAddress)) return this.getServerId();
+
         getPeerIDtoAddress().forEach((peerId, peerAddress) -> {
             if(peerAddress.equals(address)) returnId.set(peerId);
+            //if this is the TCP server
+            if(peerAddress.equals(new InetSocketAddress(address.getHostString(), address.getPort()-2))) returnId.set(peerId);
         });
+        if(returnId.get() == -1L){
+            log.log(Level.SEVERE, "UNKNOWN SERVER ADDRESS {0}", address);
+            return null;
+        }
         return returnId.get();
     }
 

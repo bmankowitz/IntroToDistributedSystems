@@ -70,17 +70,24 @@ public interface LoggingServer {
                 var formatString = "[%2$s] [%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS.%1$tL] [%3$s: %4$s.%5$s]: %6$s%n";
                 //original:
                 //var formatString = "%1$tF %1$tT %2$-7s [%3$s] %4$s.%5$s: %6$s %n%7$s";
-
-                return String.format(
-                        formatString,
-                        dateTime,
-                        record.getLevel().getName(),
-                        threadName,
-                        getSimpleName(record.getSourceClassName()),
-                        record.getSourceMethodName(),
-                        record.getMessage(),
-                        stackTraceToString(record)
-                );
+                StringBuilder sb = new StringBuilder();
+                sb.append("[").append(record.getLevel()).append("] [")
+                        .append(dateTime).append("] [")
+                        .append(threadName).append(": ")
+                        .append(getSimpleName(record.getSourceClassName())).append(".")
+                        .append(record.getSourceMethodName()).append("]: ")
+                        .append(formatMessage(record)).append("\n");
+                return sb.toString();
+//                return String.format(
+//                        formatString,
+//                        dateTime,
+//                        record.getLevel().getName(),
+//                        threadName,
+//                        getSimpleName(record.getSourceClassName()),
+//                        record.getSourceMethodName(),
+//                        record.getMessage(),
+//                        stackTraceToString(record)
+//                );
             }
         };
     }

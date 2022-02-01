@@ -53,7 +53,7 @@ public class Stage5GossipTest {
         peerIDtoAddress.put(44L, new InetSocketAddress("localhost", 8000));
 
         //create servers
-        servers = new ArrayList<>(3);
+        servers = new ArrayList<>();
         for (Map.Entry<Long, InetSocketAddress> entry : peerIDtoAddress.entrySet()) {
             HashMap<Long, InetSocketAddress> map = (HashMap<Long, InetSocketAddress>) peerIDtoAddress.clone();
             map.remove(entry.getKey());
@@ -90,7 +90,7 @@ public class Stage5GossipTest {
     public void nodesDoNotArbitrarilyDie() throws IOException, InterruptedException {
         ConcurrentHashMap<Long, GossipArchive.GossipLine> startingGossip, endingGossip;
         startingGossip = new ConcurrentHashMap<>(servers.get(0).gs.gossipTable);
-        Thread.sleep(500000);
+        Thread.sleep(100000);
         endingGossip = servers.get(0).gs.gossipTable;
         Assert.assertEquals(startingGossip.keySet(), endingGossip.keySet());
         startingGossip.forEach((id, gossipLine) ->{
@@ -118,14 +118,17 @@ public class Stage5GossipTest {
         startingGossip = new ConcurrentHashMap<>(servers.get(1).gs.gossipTable);
         ZooKeeperPeerServerImpl serverToShutdown = servers.remove(0);
         long idToShutdown = serverToShutdown.getServerId();
+        System.out.println(System.currentTimeMillis());
         serverToShutdown.shutdown();
-        Thread.sleep(GossipServer.GOSSIP_FAIL_TIME + 3L * GossipServer.GOSSIP_TIME);
+        System.out.println(System.currentTimeMillis());
+        Thread.sleep(GossipServer.GOSSIP_FAIL_TIME + 5L * GossipServer.GOSSIP_TIME);
+        System.out.println(System.currentTimeMillis());
         servers.forEach(zooKeeperPeerServer -> {
-            Assert.assertNotNull(zooKeeperPeerServer.gs.gossipTable.get(idToShutdown));
-            Assert.assertTrue(zooKeeperPeerServer.isPeerDead(idToShutdown));
-            Assert.assertTrue(zooKeeperPeerServer.gs.gossipTable.get(idToShutdown).isFailed());
+            Assert.assertNotNull(zooKeeperPeerServer.gs.gossipTable.toString() , zooKeeperPeerServer.gs.gossipTable.get(idToShutdown));
+            Assert.assertTrue(zooKeeperPeerServer.gs.gossipTable.toString() ,zooKeeperPeerServer.isPeerDead(idToShutdown));
+            Assert.assertTrue(zooKeeperPeerServer.gs.gossipTable.toString() ,zooKeeperPeerServer.gs.gossipTable.get(idToShutdown).isFailed());
         });
-        Thread.sleep(GossipServer.GOSSIP_FAILURE_CLEANUP_TIME + 3L* GossipServer.GOSSIP_TIME);
+        Thread.sleep(GossipServer.GOSSIP_FAILURE_CLEANUP_TIME * 2L);
         servers.forEach(zooKeeperPeerServer -> {
             Assert.assertNull(zooKeeperPeerServer.gs.gossipTable.get(idToShutdown));
             Assert.assertTrue(zooKeeperPeerServer.isPeerDead(idToShutdown));

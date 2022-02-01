@@ -62,10 +62,10 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
         logger.log(Level.INFO, "Created new server socket on port {0}. Accepting....", address.getPort());
         Socket client = serverSocket.accept();
         logger.log(Level.INFO, "Accepted connection from {0} on port {1}.", new Object[]{client, address.getPort()});
-        // ---- GOSSIP STUFF -----
-        InetSocketAddress socketAddress = new InetSocketAddress(client.getLocalAddress().getHostName(), client.getLocalPort());
-        server.gs.updateLocalGossipCounter(socketAddress);
-        // ---- GOSSIP STUFF -----
+//        // ---- GOSSIP STUFF -----
+//        InetSocketAddress socketAddress = new InetSocketAddress(client.getLocalAddress().getHostName(), client.getLocalPort() - 2);
+//        server.gs.updateLocalGossipCounter(socketAddress);
+//        // ---- GOSSIP STUFF -----
         return client;
     }
 
@@ -100,8 +100,16 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
         logger.log(Level.FINE, "Received message from {0}: {1}..\n Parsed as Message: {2}",
                 new Object[]{socket, received, new Message(received)});
         // ---- GOSSIP STUFF -----
-        InetSocketAddress socketAddress = new InetSocketAddress(socket.getLocalAddress().getHostName(), socket.getLocalPort());
-        server.gs.updateLocalGossipCounter(socketAddress);
+        try{
+            Message msg = new Message(received);
+            int port = msg.getSenderPort();
+            if(((msg.getSenderPort() % 1000) % 100) % 10 == 2){
+                //subtracting 2 from port to get address of the main ZooKeeperPeerServer
+                port = msg.getSenderPort() -2;
+            }
+            InetSocketAddress socketAddress = new InetSocketAddress(msg.getSenderHost(), port);
+            server.gs.updateLocalGossipCounter(socketAddress);
+        } catch(Exception e){ logger.severe(Util.getStackTrace(e));}
         // ---- GOSSIP STUFF -----
         return received;
     }
