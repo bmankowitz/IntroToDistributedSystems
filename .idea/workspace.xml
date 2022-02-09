@@ -1,21 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AnalysisUIOptions">
+    <option name="SCOPE_TYPE" value="4" />
+  </component>
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
     <list default="true" id="08a89ea4-2d35-424e-b65d-15e1deb672a3" name="Changes" comment="Push for laptop work">
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_1_18_22__11_12_PM__Changes_.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_1_18_22__11_12_PM__Changes_.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/com3800/stage5/Server1GossipArchiveAt2022-01-21T13:49:14.825369" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/com3800/stage5/Server1GossipArchiveAt2022-01-21T14:20:26.009275" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/LoggingServer.java" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/LoggingServer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/UDPMessageReceiver.java" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/UDPMessageReceiver.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/Util.java" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/Util.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GatewayServer.java" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GatewayServer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GossipArchive.java" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GossipArchive.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GossipHttpServer.java" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GossipHttpServer.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GossipServer.java" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GossipServer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/RoundRobinLeader.java" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/RoundRobinLeader.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/JavaRunnerFollower.java" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/JavaRunnerFollower.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/TCPServer.java" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/TCPServer.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/ZooKeeperPeerServerImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/ZooKeeperPeerServerImpl.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/com3800/stage5/src/test/java/edu/yu/cs/com3800/stage5/Stage5GossipTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage5/src/test/java/edu/yu/cs/com3800/stage5/Stage5GossipTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/com3800/stage5/stage5.sh" beforeDir="false" afterPath="$PROJECT_DIR$/com3800/stage5/stage5.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -40,16 +44,16 @@
     </file-type-list>
   </component>
   <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/UDPMessageReceiver.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/LoggingServer.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/com3800/stage5/pom.xml" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/com3800/stage5/stage5.sh" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/TCPServer.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GossipServer.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GatewayServer.java" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GatewayPeerServerImpl.java" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/ZooKeeperPeerServerImpl.java" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/com3800/stage5/pom.xml" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/UDPMessageReceiver.java" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GossipServer.java" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/com3800/stage5/src/test/java/edu/yu/cs/com3800/stage5/Stage5GossipTest.java" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/GatewayServer.java" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/LoggingServer.java" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/TCPServer.java" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
@@ -72,9 +76,10 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
-    <property name="settings.editor.selected.configurable" value="preferences.keymap" />
+    <property name="run.code.analysis.last.selected.profile" value="pProject Default" />
+    <property name="settings.editor.selected.configurable" value="preferences.customizations" />
   </component>
-  <component name="RunManager" selected="JUnit.edu.yu.cs.com3800.stage5 in stage5">
+  <component name="RunManager" selected="JUnit.Stage5GossipTest">
     <configuration name="Stage5GossipTest" type="JUnit" factoryName="JUnit" nameIsGenerated="true">
       <module name="stage5" />
       <extension name="coverage">
@@ -88,6 +93,22 @@
       <option name="METHOD_NAME" value="" />
       <option name="TEST_OBJECT" value="class" />
       <fork_mode value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Stage5GossipTest.clusterWorksAfterTwoDeadWorkersCleanedUp" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="stage5" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="edu.yu.cs.com3800.stage5.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="edu.yu.cs.com3800.stage5" />
+      <option name="MAIN_CLASS_NAME" value="edu.yu.cs.com3800.stage5.Stage5GossipTest" />
+      <option name="METHOD_NAME" value="clusterWorksAfterTwoDeadWorkersCleanedUp" />
+      <option name="TEST_OBJECT" value="method" />
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
@@ -142,8 +163,16 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
+    <list>
+      <item itemvalue="JUnit.edu.yu.cs.com3800.stage5 in stage5" />
+      <item itemvalue="JUnit.Stage5GossipTest" />
+      <item itemvalue="JUnit.Stage5HttpClientTest" />
+      <item itemvalue="JUnit.Stage5GossipTest.deadNodeMarkedBeforeDeleted" />
+      <item itemvalue="JUnit.Stage5GossipTest.clusterWorksAfterTwoDeadWorkersCleanedUp" />
+    </list>
     <recent_temporary>
       <list>
+        <item itemvalue="JUnit.Stage5GossipTest.clusterWorksAfterTwoDeadWorkersCleanedUp" />
         <item itemvalue="JUnit.Stage5GossipTest.deadNodeMarkedBeforeDeleted" />
       </list>
     </recent_temporary>
@@ -218,16 +247,39 @@
     <breakpoint-manager>
       <breakpoints>
         <breakpoint enabled="true" type="java-exception">
-          <properties class="java.lang.NullPointerException" package="java.lang" />
+          <properties class="java.lang.NullPointerException" package="java.lang">
+            <option name="class-filters-enabled" value="true" />
+            <class-filters>
+              <class-filter pattern="edu.**" />
+            </class-filters>
+          </properties>
           <option name="timeStamp" value="27" />
         </breakpoint>
         <breakpoint type="java-exception">
           <properties class="java.lang.AssertionError" package="java.lang" />
           <option name="timeStamp" value="33" />
         </breakpoint>
+        <breakpoint type="java-exception">
+          <properties class="java.lang.RuntimeException" package="java.lang">
+            <option name="class-filters-enabled" value="true" />
+            <class-filters>
+              <class-filter pattern="edu.**" />
+            </class-filters>
+          </properties>
+          <option name="timeStamp" value="53" />
+        </breakpoint>
+        <breakpoint enabled="true" type="java-exception">
+          <properties class="java.lang.InterruptedException" package="java.lang">
+            <option name="class-filters-enabled" value="true" />
+            <class-filters>
+              <class-filter pattern="edu.**" />
+            </class-filters>
+          </properties>
+          <option name="timeStamp" value="54" />
+        </breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/ZooKeeperPeerServerImpl.java</url>
-          <line>503</line>
+          <line>507</line>
           <option name="timeStamp" value="29" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="java-line">
@@ -239,7 +291,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/com3800/stage5/src/main/java/edu/yu/cs/com3800/stage5/ZooKeeperPeerServerImpl.java</url>
-          <line>527</line>
+          <line>531</line>
           <option name="timeStamp" value="52" />
         </line-breakpoint>
       </breakpoints>
@@ -265,6 +317,10 @@
         <watch expression="peerIDtoAddress" language="JAVA" />
       </configuration>
     </watches-manager>
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/IntroToDistributedSystems$Stage4TestUsingClient_contentTypeIsJavaValidCode.ic" NAME="Stage4TestUsingClient.contentTypeIsJavaValidCode Coverage Results" MODIFIED="1641403658980" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="idea" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false">

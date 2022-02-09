@@ -81,7 +81,8 @@ public class JavaRunnerFollower extends Thread implements LoggingServer {
             return response.toString();
         }
         //if we get here, the code compiled and gave a result:
-        logger.info("Code compiled successfully and returned: " + response);
+        //TODO: Change back to info
+        logger.warning("Code compiled successfully and returned: " + response);
         return response.toString();
     }
 }

@@ -23,7 +23,6 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
     private final ServerType serverType;
     private final ZooKeeperPeerServerImpl server;
     private Socket outerSocket;
-    private Socket innerSocket;
     private ServerSocket serverSocket;
     private boolean shutdown = false;
 
@@ -90,7 +89,7 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
             return false;
         }
     }
-    public byte[] receiveMessage(Socket socket) throws IOException {
+    public byte[] receiveMessage(Socket socket) throws IOException, InterruptedException {
         final byte[] received = modifiedReadAllBytesFromNetwork(socket);
         if(received == null){
             //There was a problem with the peer, most likely failed.
@@ -100,16 +99,15 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
         logger.log(Level.FINE, "Received message from {0}: {1}..\n Parsed as Message: {2}",
                 new Object[]{socket, received, new Message(received)});
         // ---- GOSSIP STUFF -----
-        try{
-            Message msg = new Message(received);
-            int port = msg.getSenderPort();
-            if(((msg.getSenderPort() % 1000) % 100) % 10 == 2){
-                //subtracting 2 from port to get address of the main ZooKeeperPeerServer
-                port = msg.getSenderPort() -2;
-            }
-            InetSocketAddress socketAddress = new InetSocketAddress(msg.getSenderHost(), port);
-            server.gs.updateLocalGossipCounter(socketAddress);
-        } catch(Exception e){ logger.severe(Util.getStackTrace(e));}
+        Message msg = new Message(received);
+        int port = msg.getSenderPort();
+        //if the last digit is a two, then this is the TCPServer. Check the main server's address
+        if(((msg.getSenderPort() % 1000) % 100) % 10 == 2){
+            //subtracting 2 from port to get address of the main ZooKeeperPeerServer
+            port = msg.getSenderPort() -2;
+        }
+        InetSocketAddress socketAddress = new InetSocketAddress(msg.getSenderHost(), port);
+        server.gs.updateLocalGossipCounter(socketAddress);
         // ---- GOSSIP STUFF -----
         return received;
     }
@@ -120,17 +118,18 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
     }
 
     public void shutdown(){
+        logger.log(Level.WARNING, "Received TCPServer shutdown request");
         if(this.javaRunnerFollower != null) javaRunnerFollower.shutdown();
         if(this.scheduler != null) scheduler.shutdown();
         shutdown = true;
         this.interrupt();
     }
-    public byte[] modifiedReadAllBytesFromNetwork(Socket socket)  {
+    public byte[] modifiedReadAllBytesFromNetwork(Socket socket) throws InterruptedException {
         InputStream in = null;
         try {
             in = socket.getInputStream();
             while (in.available() == 0) {
-                try {
+//                try {
                     //Due to inconsistencies between remote/local address, assume a peer is failed only if both are failed.
                     //TODO: find a better system
                     InetSocketAddress socketAddressLocal = new InetSocketAddress(socket.getLocalAddress().getHostName(), socket.getLocalPort()-2);
@@ -140,9 +139,8 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
                         return null;
                     }
                     sleep(1000);
-                }
-                catch (InterruptedException ignored) {
-                }
+                    if(isInterrupted() || shutdown) throw new InterruptedException("Was interrupted");
+//                }
             }
         }
         catch(IOException ignored){}
@@ -205,7 +203,7 @@ public class TCPServer extends Thread implements LoggingServer, Callable<Message
                                 nextFollowerAddress = scheduler.getTCPAddressOfNextServer(msg);
                                 logger.log(Level.INFO, "Attempting to send work to worker id {0} at address {1}",
                                         new Object[]{server.getPeerIdByAddress(nextFollowerAddress), nextFollowerAddress});
-                                innerSocket = connectTcpServer(nextFollowerAddress);
+                                Socket innerSocket = connectTcpServer(nextFollowerAddress);
                                 sendMessage(innerSocket, msg.getNetworkPayload());
                                 rawResponse = receiveMessage(innerSocket);
                                 if (rawResponse != null) {

@@ -83,7 +83,7 @@ public class UDPMessageReceiver extends Thread implements LoggingServer {
                     }
                 }
             }
-            catch (SocketTimeoutException ste) {
+            catch (SocketTimeoutException ignored) {
             }
             catch (Exception e) {
                 if (!this.isInterrupted()) {

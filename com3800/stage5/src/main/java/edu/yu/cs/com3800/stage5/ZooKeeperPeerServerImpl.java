@@ -38,8 +38,8 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     private UDPMessageReceiver receiverWorker;
     public final Set<Long> observerIds = new HashSet<>();
     //------ GOSSIP STUFF (TODO: MIGRATE) -------
-    public GossipServer gs;
-    GossipHttpServer gossipHttpServer;
+    public final GossipServer gs;
+    final GossipHttpServer gossipHttpServer;
     //------ GOSSIP STUFF -----------------------
 
 
@@ -74,9 +74,11 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     public Map<Long, InetSocketAddress> getPeerIDtoAddress() {
         return Collections.unmodifiableMap(peerIDtoAddress);
     }
-    private Message getNextElectionMessage(long maxWaitMs){
+    private Message getNextElectionMessage(long maxWaitMs) throws InterruptedException {
         long startTime = System.currentTimeMillis();
         while(System.currentTimeMillis() - startTime < maxWaitMs) {
+            //need to exit if necessary:
+            if(isInterrupted() || shutdown) throw new InterruptedException("Received Shutdown");
             Optional<Message> msg = incomingMessages.stream().filter(x -> x.getMessageType() == Message.MessageType.ELECTION).findFirst();
             if (msg.isPresent()){
                 incomingMessages.remove(msg.get());
@@ -97,6 +99,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
             //Remove next notification from queue, timing out after 2 times the termination time
             Message message;
             while((message = getNextElectionMessage(maxNotificationTime)) == null){
+                if(isInterrupted() || shutdown) throw new InterruptedException();
                 // resend notifications to prompt a reply from others ...
                 sendNotifications();
                 // and implement exponential back-off when notifications not received
@@ -205,7 +208,8 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     private void acceptElectionWinner(ElectionNotification n) throws InterruptedException {
         //set my state to either LEADING or FOLLOWING
         //clear out the incoming queue before returning
-        log.log(Level.INFO, "Elected leader {0}", n);
+        //TODO: go back to info
+        log.log(Level.WARNING, "Elected leader {0}", n);
         setCurrentLeader(n);
         hasCurrentLeader = true;
         if(this.id == currentLeader.getProposedLeaderID()) setPeerState(LEADING);

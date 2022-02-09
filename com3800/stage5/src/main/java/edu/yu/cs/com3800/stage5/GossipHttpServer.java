@@ -16,7 +16,7 @@ import java.util.logging.Logger;
 
 public class GossipHttpServer implements SimpleServer, LoggingServer {
     HttpServer server;
-    ZooKeeperPeerServerImpl hostPeerServer;
+    final ZooKeeperPeerServerImpl hostPeerServer;
     static Logger log;
     class GossipArchiveHttpHandler implements HttpHandler {
         @Override

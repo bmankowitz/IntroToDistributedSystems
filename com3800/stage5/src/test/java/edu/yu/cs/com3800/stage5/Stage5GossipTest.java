@@ -75,8 +75,9 @@ public class Stage5GossipTest {
     }
 
     @After
-    public void tearDown() {
+    public void tearDown() throws InterruptedException {
         servers.forEach(ZooKeeperPeerServerImpl::shutdown);
+        Thread.sleep(10000);
     }
 
     @Test

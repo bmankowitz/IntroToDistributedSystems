@@ -99,12 +99,12 @@ public class GatewayServer implements SimpleServer, LoggingServer{
                 Long minID = requestsToSend.keySet().stream().min(Long::compareTo).get();
                 String minIdRequest = requestsToSend.remove(minID);
                 //todo: change log level
-                log.log(Level.WARNING, "Leader is available. Sending out request {0}. incompleteRequests: {1}, requestsToSend: {2}",
-                        new Object[]{minID, incompleteRequests, requestsToSend});
-                while(gateway.getLeaderAddress() == null){
+                log.log(Level.WARNING, "Leader (id:{0} is available. Sending out request {1}. incompleteRequests: {2}, requestsToSend: {3}",
+                        new Object[]{gateway.getCurrentLeader(), minID, incompleteRequests, requestsToSend});
+                while(!gateway.hasCurrentLeader){
                     //Sleep until leader exists
-                    log.log(Level.WARNING, "Gateway cannot find leader");
-                    try{ Thread.sleep(300);} catch (Exception ignored){}
+                    log.log(Level.WARNING, "Gateway cannot find leader. Current nodes: {0}", gateway.peerIDtoStatus);
+                    try{ Thread.sleep(500);} catch (InterruptedException ignored){}
                 }
                 int leaderPort = gateway.getLeaderAddress().getPort();
                 returnValue = sendMessage(minID, minIdRequest, leaderPort, gateway);

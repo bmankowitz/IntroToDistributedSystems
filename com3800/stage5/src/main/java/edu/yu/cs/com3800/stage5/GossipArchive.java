@@ -111,7 +111,7 @@ public class GossipArchive {
 
 
     //UTIL-----
-    ConcurrentHashMap<Pair, ConcurrentHashMap<Long, GossipLine>> receivedHeartbeatToGossipTable = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<Pair, ConcurrentHashMap<Long, GossipLine>> receivedHeartbeatToGossipTable = new ConcurrentHashMap<>();
         public void addToArchive(long senderId, long heartbeat, ConcurrentHashMap<Long, GossipLine> gossipTable){
             receivedHeartbeatToGossipTable.put(new Pair(senderId, heartbeat), gossipTable);
         }

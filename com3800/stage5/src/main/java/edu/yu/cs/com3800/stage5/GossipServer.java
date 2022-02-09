@@ -19,13 +19,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class GossipServer extends Thread implements LoggingServer {
-    public static int GOSSIP_TIME = 350;
+    public static final int GOSSIP_TIME = 350;
     public static final int GOSSIP_FAIL_TIME = GOSSIP_TIME * 10;
     public static final int GOSSIP_FAILURE_CLEANUP_TIME = GOSSIP_FAIL_TIME * 2;
-    ZooKeeperPeerServerImpl server;
+    final ZooKeeperPeerServerImpl server;
     boolean shutdown = false;
     Logger log;
-    Random random = new Random();
+    final Random random = new Random();
     long lastUpdate = System.currentTimeMillis();
     //gossip table: id to heartbeat time
     public final ConcurrentHashMap<Long, GossipArchive.GossipLine> gossipTable;
@@ -53,7 +53,7 @@ public class GossipServer extends Thread implements LoggingServer {
         gossipTable.put(server.getServerId(), new GossipArchive.GossipLine(server.getServerId(), gossipHeartbeat.get(), System.currentTimeMillis(), false));
     }
     private void checkEachServerFailed(){
-        ArrayList<Long> servers = new ArrayList<>(server.getPeerIDtoAddress().keySet());;
+        ArrayList<Long> servers = new ArrayList<>(server.getPeerIDtoAddress().keySet());
         servers.forEach((id) -> {
             if (server.isPeerDead(id)) {
                 if (gossipTable.get(id) != null &&
@@ -160,7 +160,12 @@ public class GossipServer extends Thread implements LoggingServer {
         log.log(Level.WARNING, "{0}: no heartbeat from server {1} - server failed", new Object[]{this.server.getServerId(), peerID});
         //double-logging per requirements
         System.out.println(server.getServerId()+": no heartbeat from server "+peerID+" - server failed");
-        gossipTable.get(peerID).setFailed(true);
+        if(gossipTable.get(peerID) != null) {
+            gossipTable.get(peerID).setFailed(true);
+            log.log(Level.FINE, "Successfully set {0} as failed", peerID);
+        } else {
+            log.log(Level.WARNING, "Unable to set peer {0} as failed in GossipTable - unable to find peer {0}", peerID);
+        }
         server.peerIDtoStatus.remove(peerID);
     }
 
@@ -204,6 +209,7 @@ public class GossipServer extends Thread implements LoggingServer {
 
     public void shutdown() {
         shutdown = true;
+        interrupt();
     }
 
 }

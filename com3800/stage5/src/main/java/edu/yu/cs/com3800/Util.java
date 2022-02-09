@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 
-@SuppressWarnings("ALL")
 public class Util {
 
     public static byte[] readAllBytesFromNetwork(InputStream in)  {
