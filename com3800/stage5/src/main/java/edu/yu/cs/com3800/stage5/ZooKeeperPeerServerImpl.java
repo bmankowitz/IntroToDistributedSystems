@@ -29,7 +29,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
     private long peerEpoch;
     private volatile Vote currentLeader;
     public final ConcurrentHashMap<Long,InetSocketAddress> peerIDtoAddress;
-    private final HashMap<Long,ElectionNotification> peerIDtoVote;
+    private final ConcurrentHashMap<Long, Optional<ElectionNotification>> peerIDtoVote;
     public final ConcurrentHashMap<Long, ServerState> peerIDtoStatus;
     private Logger log;
     public final ExecutorService executorService = Executors.newFixedThreadPool(8);
@@ -66,7 +66,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         gossipHttpServer = new GossipHttpServer(this);
         gossipHttpServer.start();
         //-------- GOSSIP STUFF --------
-        peerIDtoVote = new HashMap<>();
+        peerIDtoVote = new ConcurrentHashMap<>();
         setPeerState(LOOKING);
         setCurrentLeader(new Vote(this.id, this.peerEpoch));
     }
@@ -92,7 +92,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         int maxNotificationTime = ZooKeeperLeaderElection.maxNotificationInterval;
         //send initial notifications to other peers to get things started
         sendNotifications();
-        peerIDtoVote.put(this.id, createElectionNotificationFromVote(currentLeader));
+        registerVote(id, getCurrentLeader());
         //Loop, exchanging notifications with other servers until we find a leader
         //NOTE: Even if we are an observer, we still need to "participate" in voting to determine the master.
         LeaderSearch: while ((getPeerState() == LOOKING || getPeerState() == OBSERVER) && !shutdown && !isInterrupted()) {
@@ -119,7 +119,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
                 //noinspection UnnecessaryLabelOnContinueStatement
                 continue LeaderSearch;
             }
-            peerIDtoVote.put(vote.getSenderID(), vote);
+            registerVote(vote.getSenderID(), vote);
             log.log(Level.INFO, "vote array after inserting/updating vote from id {0}: {1}",
                     new Object[]{vote.getSenderID(), peerIDtoVote});
             //switch on the state of the sender:
@@ -191,6 +191,23 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         return currentLeader;
     }
 
+    private ElectionNotification registerVote(long id, Vote vote) {
+        ElectionNotification electionNotification = createElectionNotificationFromVote(vote);
+        Optional<ElectionNotification> optionalElectionNotification;
+        if(electionNotification == null)
+            optionalElectionNotification = Optional.empty();
+        else
+            optionalElectionNotification = Optional.of(electionNotification);
+        Optional<ElectionNotification> returnValue = peerIDtoVote.put(id, optionalElectionNotification);
+        if(returnValue == null || returnValue.isEmpty()) return null;
+        else return returnValue.get();
+    }
+    private ElectionNotification getCurrentPeerVote(long id) {
+        Optional<ElectionNotification> returnValue = peerIDtoVote.get(id);
+        if(returnValue == null || returnValue.isEmpty()) return null;
+        else return returnValue.get();
+    }
+
     private void sendNotifications() {
         log.log(Level.FINE, "Sending initial EN notifications from port {0}",this.getUdpPort());
         //send our initial vote to peers. They will reply with their own vote:
@@ -252,13 +269,13 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
      * Termination predicate. Given a set of votes, determines if there is sufficient support for the proposal to declare the end of the election round.
      * Who voted for who isn't relevant, we only care that each server has one current vote
      */
-    protected boolean haveEnoughVotes(Map<Long, ElectionNotification> votes, Vote proposal) {
+    protected boolean haveEnoughVotes(Map<Long, Optional<ElectionNotification>> votes, Vote proposal) {
         log.log(Level.FINE, "Checking support for vote {0}", proposal);
         AtomicInteger voteCount = new AtomicInteger();
-        votes.forEach((voterId,electionNotification) -> {
-            if(electionNotification == null) return;
-            if(electionNotification.getProposedLeaderID() == proposal.getProposedLeaderID()
-                    && electionNotification.getPeerEpoch() == proposal.getPeerEpoch())
+        votes.forEach((voterId, electionNotification) -> {
+            if(electionNotification.isEmpty()) return;
+            if(electionNotification.get().getProposedLeaderID() == proposal.getProposedLeaderID()
+                    && electionNotification.get().getPeerEpoch() == proposal.getPeerEpoch())
                 voteCount.getAndIncrement();
         });
         log.log(Level.INFO, "Proposal {0} has {1} votes. Passed: {2}. Votes: {3}",
@@ -402,7 +419,7 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
             currentLeader = new Vote(v.getProposedLeaderID(), v.getPeerEpoch());
             this.peerEpoch = v.getPeerEpoch();
         }
-        peerIDtoVote.put(this.id, createElectionNotificationFromVote(v));
+        registerVote(this.id, createElectionNotificationFromVote(v));
     }
 
     @Override
@@ -502,16 +519,14 @@ public class ZooKeeperPeerServerImpl extends Thread implements ZooKeeperPeerServ
         return nonObserverNodes/2 + 1;
     }
     public boolean isObserver(long peerId){
-//        return peerIDtoVote.get(id) == null;
-        //System.out.println(peerIDtoStatus);
         if(peerIDtoStatus == null || peerIDtoStatus.get(id) == null ){
             System.out.println("nothing");
         }
         //Unfortunately, there is no way to guarantee that a given server is an observer.
         //If there is any received communication, we can check the ElectionNotification, but otherwise it
         //is impossible to determine given the distributed nature of the system
-        if(peerIDtoStatus.get(peerId) != null && peerIDtoVote.get(peerId) != null){
-            if(peerIDtoStatus.get(peerId).equals(peerIDtoVote.get(peerId).getState())){
+        if(peerIDtoStatus.get(peerId) != null && getCurrentPeerVote(peerId) != null){
+            if(peerIDtoStatus.get(peerId).equals(getCurrentPeerVote(peerId).getState())){
                return peerIDtoStatus.get(peerId).equals(OBSERVER);
             }
         }

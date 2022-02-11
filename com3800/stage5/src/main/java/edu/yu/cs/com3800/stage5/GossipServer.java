@@ -160,6 +160,10 @@ public class GossipServer extends Thread implements LoggingServer {
         log.log(Level.WARNING, "{0}: no heartbeat from server {1} - server failed", new Object[]{this.server.getServerId(), peerID});
         //double-logging per requirements
         System.out.println(server.getServerId()+": no heartbeat from server "+peerID+" - server failed");
+        if(server.hasCurrentLeader && peerID == server.getCurrentLeader().getProposedLeaderID()){
+            log.log(Level.WARNING,"{0}: failed server {1} was leader", new Object[]{this.server.getServerId(), peerID});
+            server.setCurrentLeaderFailed();
+        }
         if(gossipTable.get(peerID) != null) {
             gossipTable.get(peerID).setFailed(true);
             log.log(Level.FINE, "Successfully set {0} as failed", peerID);
